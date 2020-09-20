@@ -1,16 +1,15 @@
-conf:
-  name: test
-  logUri: "s3://spark-boilerplate/logs/"
-  subnet: subnet-b0711ec9
-  instanceType: "m4.xlarge"
-  key: warren-laptop
-  instanceCount: 1
-  bidPct: 50
-  serviceRole: emr-default-role
-  instanceRole: emr-default-instance-role
-  region: us-east-1
-  tags:
-    - Key: Testkey1
-      Value: TestValue1
-    - Key: Testkey2
-      Value: TestValue2
+name: test
+logUri: "s3://spark-boilerplate/logs/"
+subnet: subnet-b0711ec9
+instanceType: "m4.xlarge"
+key: warren-laptop
+instanceCount: 1
+bidPct: 50
+serviceRole: emr-default-role
+instanceRole: emr-default-instance-role
+region: us-east-1
+tags:
+  - Key: Testkey1
+    Value: TestValue1
+  - Key: Testkey2
+    Value: TestValue2

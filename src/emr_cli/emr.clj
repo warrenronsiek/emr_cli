@@ -6,16 +6,20 @@
             [clj-yaml.core :as yaml]))
 
 (defn calculate-bid-price [instance-type region percent]
-  (let [pricing (aws/client {:api :pricing :region "us-east-1"})
-        endpoints (yaml/parse-string (slurp (io/resource "endpoints.json")))
-        get-region-name (fn [region-code] (:description ((keyword region-code) (:regions (first (:partitions endpoints))))))
+  (let [get-region-name (fn [region-code] (:description ((keyword region-code)
+                                                         (:regions (first
+                                                                     (:partitions
+                                                                       (yaml/parse-string
+                                                                         (slurp
+                                                                           (io/resource "endpoints.json")))))))))
         filters [{:Field "tenancy" :Value "shared" :Type "TERM_MATCH"}
                  {:Field "operatingSystem" :Value "Linux" :Type "TERM_MATCH"}
                  {:Field "preInstalledSw" :Value "NA" :Type "TERM_MATCH"}
                  {:Field "instanceType" :Value instance-type, :Type "TERM_MATCH"}
                  {:Field "location" :Value (get-region-name region) :Type "TERM_MATCH"}
                  {:Field "capacitystatus" :Value "Used" :Type "TERM_MATCH"}]
-        data (aws/invoke pricing {:op :GetProducts :request {:ServiceCode "AmazonEC2" :Filters filters}})
+        data (aws/invoke (aws/client {:api :pricing :region "us-east-1"})
+                         {:op :GetProducts :request {:ServiceCode "AmazonEC2" :Filters filters}})
         on-demand (:OnDemand (:terms (yaml/parse-string (first (:PriceList data)))))
         price-string (:USD (:pricePerUnit (second (first (:priceDimensions (second (first on-demand)))))))]
     (format "%.2f" (* (Float/parseFloat price-string) percent))))
@@ -94,6 +98,6 @@
                           :Properties     {:yarn.scheduler.capacity.resource-calculator "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"}}]}))
 
 
-(defn create-cluster [params]
+(defn create-cluster [conf]
   (let [emr (aws/client {:api :elasticmapreduce})]
-    (aws/invoke emr {:op :RunJobFlow :request (create-request params)})))
+    (aws/invoke emr {:op :RunJobFlow :request (create-request conf)})))
