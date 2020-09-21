@@ -5,24 +5,20 @@
             [clojure.java.io :as io]
             [clj-yaml.core :as yaml]))
 
-(defn calculate-bid-price [instance-type region percent]
-  (let [get-region-name (fn [region-code] (:description ((keyword region-code)
-                                                         (:regions (first
-                                                                     (:partitions
-                                                                       (yaml/parse-string
-                                                                         (slurp
-                                                                           (io/resource "endpoints.json")))))))))
+(defn calculate-bid-price [config]
+  (let [pricing (utils/client-builder config "pricing")
+        endpoints (yaml/parse-string (slurp (io/resource "endpoints.json")))
+        get-region-name (fn [region-code] (:description ((keyword region-code) (:regions (first (:partitions endpoints))))))
         filters [{:Field "tenancy" :Value "shared" :Type "TERM_MATCH"}
                  {:Field "operatingSystem" :Value "Linux" :Type "TERM_MATCH"}
                  {:Field "preInstalledSw" :Value "NA" :Type "TERM_MATCH"}
-                 {:Field "instanceType" :Value instance-type, :Type "TERM_MATCH"}
-                 {:Field "location" :Value (get-region-name region) :Type "TERM_MATCH"}
+                 {:Field "instanceType" :Value (:instance-type config), :Type "TERM_MATCH"}
+                 {:Field "location" :Value (get-region-name (:region config)) :Type "TERM_MATCH"}
                  {:Field "capacitystatus" :Value "Used" :Type "TERM_MATCH"}]
-        data (aws/invoke (aws/client {:api :pricing :region "us-east-1"})
-                         {:op :GetProducts :request {:ServiceCode "AmazonEC2" :Filters filters}})
+        data (aws/invoke pricing {:op :GetProducts :request {:ServiceCode "AmazonEC2" :Filters filters}})
         on-demand (:OnDemand (:terms (yaml/parse-string (first (:PriceList data)))))
         price-string (:USD (:pricePerUnit (second (first (:priceDimensions (second (first on-demand)))))))]
-    (format "%.2f" (* (Float/parseFloat price-string) percent))))
+    (format "%.2f" (* (Float/parseFloat price-string) (:bidPct config)))))
 
 (defn calculate-emr-params [instance-type worker-count]
   ; I am doing a variant of what is specified in some spark books/talks, but you can find something similar in:
@@ -56,33 +52,32 @@
      :yarn-allocateable-memory-per-node (str (* allocateable-memory-per-node 1024))
      :yarn-allocateable-cores-per-node  (str allocateable-cores-per-node)}))
 
-(defn create-request [{:keys [name log-uri subnet instance-type key instance-count bid-pct job-role service-role
-                              region tags]}]
+(defn create-request [config]
   "tags of shape {:Key key :Value value}"
-  (let [params (calculate-emr-params instance-type instance-count)]
-    {:Name              name
-     :LogUri            log-uri
+  (let [params (calculate-emr-params (:instance-type config) (:instance-count config))]
+    {:Name              (:name config)
+     :LogUri            (:log-uri config)
      :ReleaseLabel      "emr-6.0.0"
      :VisibleToAllUsers true
-     :JobFlowRole       job-role
-     :ServiceRole       service-role
+     :JobFlowRole       (:job-role config)
+     :ServiceRole       (:service-role config)
      :Applications      [{:Name "Spark"} {:Name "Hadoop"} {:Name "Hive"} {:Name "Zeppelin"}]
-     :Tags              tags
-     :Instances         {:Ec2SubnetId                 subnet
-                         :Ec2KeyName                  key
+     :Tags              (:tags config)
+     :Instances         {:Ec2SubnetId                 (:subnet config)
+                         :Ec2KeyName                  (:key config)
                          :KeepJobFlowAliveWhenNoSteps true
                          :TerminationProtected        false
                          :InstanceGroups              [{:Name          "master"
                                                         :InstanceRole  "MASTER"
                                                         :Market        "ON_DEMAND"
-                                                        :InstanceType  instance-type
+                                                        :InstanceType  (:instance-type config)
                                                         :InstanceCount 1}
                                                        {:Name          "worker"
                                                         :InstanceRole  "CORE"
                                                         :Market        "SPOT"
-                                                        :InstanceType  instance-type
-                                                        :InstanceCount instance-count
-                                                        :BidPrice      (calculate-bid-price instance-type region bid-pct)}]}
+                                                        :InstanceType  (:instance-type config)
+                                                        :InstanceCount (:instance-count config)
+                                                        :BidPrice      (calculate-bid-price config)}]}
      :Configurations    [{:Classification "spark-defaults"
                           :Properties     {:spark.driver.memory           (:executor-memory params)
                                            :spark.driver.cores            (:executor-cores params)
@@ -99,5 +94,5 @@
 
 
 (defn create-cluster [conf]
-  (let [emr (aws/client {:api :elasticmapreduce})]
+  (let [emr (utils/client-builder conf "emr")]
     (aws/invoke emr {:op :RunJobFlow :request (create-request conf)})))

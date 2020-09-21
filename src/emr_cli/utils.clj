@@ -1,7 +1,33 @@
 (ns emr-cli.utils
   (:require [clj-yaml.core :as yaml]
             [bouncer.core :as b]
-            [bouncer.validators :as v]))
+            [bouncer.validators :as v]
+            [cognitect.aws.client.api :as aws]
+            [cognitect.aws.credentials :as credentials]))
+
+(defn client-builder                                        ;TODO: Clean this up - its horrible
+  ([config service] (if (:callerRole config)
+                      (let [credentials (aws/invoke
+                                          (aws/client {:api :sts :region (keyword (:region config))})
+                                          {:op :AssumeRole :request {:RoleArn         (:callerRole config)
+                                                                     :RoleSessionName "emr-cli-session"}})]
+                        (aws/client {:api                  (keyword service) :region (keyword (:region config))
+                                     :credentials-provider (credentials/profile-credentials-provider
+                                                             {:aws/access-key-id     (:Credentials (:AccessKeyId credentials))
+                                                              :aws/secret-access-key (:Credentials (:SecretAccessKey credentials))
+                                                              :aws/session-token     (:Credentials (:SessionToken credentials))})}))
+                      (aws/client {:api (keyword service) :region (keyword (:region config))})))
+  ([config service region-override] (if (:callerRole config)
+                                      (let [credentials (aws/invoke
+                                                          (aws/client {:api :sts :region (keyword region-override)})
+                                                          {:op :AssumeRole :request {:RoleArn         (:callerRole config)
+                                                                                     :RoleSessionName "emr-cli-session"}})]
+                                        (aws/client {:api                  (keyword service) :region (keyword region-override)
+                                                     :credentials-provider (credentials/profile-credentials-provider
+                                                                             {:aws/access-key-id     (:Credentials (:AccessKeyId credentials))
+                                                                              :aws/secret-access-key (:Credentials (:SecretAccessKey credentials))
+                                                                              :aws/session-token     (:Credentials (:SessionToken credentials))})}))
+                                      (aws/client {:api (keyword service) :region (keyword region-override)}))))
 
 (defn parse-conf [{:keys [conf]}]
   (let [validation (b/validate (yaml/parse-string conf)

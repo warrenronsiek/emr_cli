@@ -16,9 +16,9 @@
 
 (deftest price-calculation-test
   (testing "price calculation"
-    (is (instance? String (calculate-bid-price "m4.4xlarge" "us-east-1" 0.5)))
-    (is (instance? Float (Float/parseFloat (calculate-bid-price "m4.4xlarge" "us-east-1" 0.5))))
-    (is (<= 0.1 (Float/parseFloat (calculate-bid-price "m4.4xlarge" "us-east-1" 0.5)) 1.0))))
+    (is (instance? String (calculate-bid-price {:instance-type "m4.4xlarge" :region "us-east-1" :bidPct 50})))
+    (is (instance? Float (Float/parseFloat (calculate-bid-price {:instance-type "m4.4xlarge" :region "us-east-1" :bidPct 50 }))))
+    (is (<= 0.1 (Float/parseFloat (calculate-bid-price {:instance-type "m4.4xlarge" :region "us-east-1" :bidPct 50 })) 1.0))))
 
 (deftest create-request-test
   (testing "creating emr request"
@@ -31,3 +31,5 @@
       (is (= (:JobFlowRole request) (:job-role params)))
       (is (= (:service-role params) (:ServiceRole request)))
       )))
+
+(run-tests)
