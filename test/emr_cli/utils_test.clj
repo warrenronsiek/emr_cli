@@ -28,3 +28,8 @@
 (deftest crazy-conf-consumption
   (testing "not even wrong conf"
     (is (thrown? java.lang.ClassCastException (parse-conf "asdf")))))
+
+(deftest build-clients
+  (testing "clintbuilder builds clients"
+    (let [conf (parse-conf (slurp (io/resource "example_conf.yml")))]
+      (is ))))

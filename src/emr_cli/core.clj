@@ -5,8 +5,8 @@
   (:gen-class))
 
 (def CONFIGURATION
-  {:app {:command "mlship"
-         :description "ships your ml!"
+  {:app {:command "emr-cli"
+         :description "creates your emr clusters"
          :version "0.0.1"}
    :commands [{:command "hi"
                :short "h"

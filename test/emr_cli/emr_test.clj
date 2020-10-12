@@ -31,5 +31,3 @@
       (is (= (:JobFlowRole request) (:job-role params)))
       (is (= (:service-role params) (:ServiceRole request)))
       )))
-
-(run-tests)
