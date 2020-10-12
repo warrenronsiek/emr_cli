@@ -1,0 +1,15 @@
+name: failconf
+logUri: 123
+subnet: 098
+instanceType: "m4.xlarge"
+key: 00
+instanceCount: "asdf"
+bidPct: 0
+serviceRole: i3i3i
+instanceRole: 123
+region: us-east-7
+tags:
+  - Key: Testkey1
+    Value: TestValue1
+  - Key: Testkey2
+    Value: TestValue2

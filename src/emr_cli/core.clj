@@ -4,9 +4,6 @@
             [emr-cli.utils :refer [parse-conf]])
   (:gen-class))
 
-(defn hello [{:keys [name]}] (println (str "Hi! " name)))
-(defn print-args [{:keys [conf]}] (println (str conf)))
-
 (def CONFIGURATION
   {:app {:command "mlship"
          :description "ships your ml!"
