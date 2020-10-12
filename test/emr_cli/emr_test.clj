@@ -62,7 +62,18 @@
                                   :InstanceRole  "CORE"
                                   :InstanceType  (:instanceType demand-params)
                                   :InstanceCount (:instanceCount demand-params)
-                                  :Market        "ON_DEMAND"}))
-            ))))))
-
-;(run-tests)
+                                  :Market        "ON_DEMAND"}))))))
+    (testing "cluster configuration props"
+      (let [emr-params (calculate-emr-params (:instanceType params) (:instanceCount params))
+            config (:Configurations request)
+            spark-defaults (:Properties (first config))
+            yarn-site (:Properties (second config))]
+        (is (= (:spark.driver.memory spark-defaults) (:executor-memory emr-params)))
+        (is (= (:spark.driver.cores spark-defaults) (:executor-cores emr-params)))
+        (is (= (:spark.executor.memory spark-defaults) (:executor-memory emr-params)))
+        (is (= (:spark.executor.instances spark-defaults) (:executor-instances emr-params)))
+        (is (= (:spark.executor.cores spark-defaults) (:executor-cores emr-params)))
+        (is (= (:spark.sql.shuffle.partitions spark-defaults) (:shuffle-partitions emr-params)))
+        (is (= (:spark.executor.memoryOverhead spark-defaults) (:memory-overhead emr-params)))
+        (is (= (:yarn.nodemanager.resource.memory-mb yarn-site) (:yarn-allocateable-memory-per-node emr-params)))
+        (is (= (:yarn.nodemanager.resource.cpu-vcores yarn-site) (:yarn-allocateable-cores-per-node emr-params)))))))
