@@ -1,7 +1,7 @@
 (ns emr-cli.utils-test
   (:require [clojure.test :refer :all]
             [clojure.java.io :as io]
-            [emr-cli.utils :refer [parse-conf]]))
+            [emr-cli.utils :refer [parse-conf client-builder]]))
 
 
 (deftest good-conf-consumption
@@ -10,7 +10,7 @@
       (is (= (:name good-conf) "test"))
       (is (= (:logUri good-conf) "s3://spark-boilerplate/logs/"))
       (is (= (:subnet good-conf) "subnet-b0711ec9"))
-      (is (= (:instanceType good-conf) "m4.xlarge"))
+      (is (= (:instanceType good-conf) "m4.4xlarge"))
       (is (= (:key good-conf) "warren-laptop"))
       (is (= (:instanceCount good-conf) 1))
       (is (= (:bidPct good-conf) 50))
@@ -30,6 +30,6 @@
     (is (thrown? java.lang.ClassCastException (parse-conf "asdf")))))
 
 (deftest build-clients
-  (testing "clintbuilder builds clients"
+  (testing "client-builder builds clients"
     (let [conf (parse-conf (slurp (io/resource "example_conf.yml")))]
-      (is ))))
+      (is (instance? cognitect.aws.client.Client (client-builder conf "s3"))))))

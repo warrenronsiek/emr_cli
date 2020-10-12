@@ -18,7 +18,7 @@
         data (aws/invoke pricing {:op :GetProducts :request {:ServiceCode "AmazonEC2" :Filters filters}})
         on-demand (:OnDemand (:terms (yaml/parse-string (first (:PriceList data)))))
         price-string (:USD (:pricePerUnit (second (first (:priceDimensions (second (first on-demand)))))))]
-    (format "%.2f" (* (Float/parseFloat price-string) (:bidPct config)))))
+    (format "%.2f" (* (Float/parseFloat price-string) (/ (:bidPct config) 100)))))
 
 (defn calculate-emr-params [instance-type worker-count]
   ; I am doing a variant of what is specified in some spark books/talks, but you can find something similar in:
@@ -54,7 +54,7 @@
 
 (defn create-request [config]
   "tags of shape {:Key key :Value value}"
-  (let [params (calculate-emr-params (:instance-type config) (:instance-count config))]
+  (let [params (calculate-emr-params (:instanceType config) (:instanceCount config))]
     {:Name              (:name config)
      :LogUri            (:log-uri config)
      :ReleaseLabel      "emr-6.0.0"

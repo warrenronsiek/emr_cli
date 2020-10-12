@@ -1,9 +1,9 @@
 name: test
 logUri: "s3://spark-boilerplate/logs/"
 subnet: subnet-b0711ec9
-instanceType: "m4.xlarge"
+instanceType: "m4.4xlarge"
 key: warren-laptop
-instanceCount: 1
+instanceCount: 10
 bidPct: 50
 serviceRole: emr-default-role
 instanceRole: emr-default-instance-role

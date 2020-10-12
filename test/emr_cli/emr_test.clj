@@ -1,6 +1,8 @@
 (ns emr-cli.emr-test
   (:require [clojure.test :refer :all]
-            [emr-cli.emr :refer :all]))
+            [emr-cli.emr :refer :all]
+            [emr-cli.utils :refer [parse-conf]]
+            [clojure.java.io :as io]))
 
 (deftest emr-params-test
   (testing "m4.4xlarge"
@@ -21,13 +23,10 @@
     (is (<= 0.1 (Float/parseFloat (calculate-bid-price {:instance-type "m4.4xlarge" :region "us-east-1" :bidPct 50 })) 1.0))))
 
 (deftest create-request-test
-  (testing "creating emr request"
-    (let [params {:name "test" :log-uri "s3://mytestlog" :subnet "subnet-asdf" :instance-type "m4.4xlarge" :key "mykey"
-                  :instance-count 5 :bid-pct 50 :job-role "myjobrole" :service-role "servrole" :region "us-east-1"
-                  :Tags [{:Key "k1" :Value "v1"} {:Key "k2" :Value "v2"}]}
+  (testing "top level request arguments"
+    (let [params (parse-conf (slurp (io/resource "example_conf.yml")))
           request (create-request params)]
       (is (= (:Name request) (:name params)))
       (is (= (:LogUri request) (:log-uri params)))
       (is (= (:JobFlowRole request) (:job-role params)))
-      (is (= (:service-role params) (:ServiceRole request)))
-      )))
+      (is (= (:ServiceRole request) (:service-role params))))))
