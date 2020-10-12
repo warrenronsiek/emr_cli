@@ -5,21 +5,22 @@
             [cognitect.aws.client.api :as aws]
             [cognitect.aws.credentials :as credentials]))
 
-(defn client-builder                                        ;TODO: Clean this up - its horrible
-  [config service & [region-override]] (let [service (keyword service)
-                                             region (keyword (or region-override (:region config)))]
-                                         (if (:callerRole config)
-                                           (let [credentials (aws/invoke
-                                                               (aws/client {:api :sts :region region})
-                                                               {:op :AssumeRole :request {:RoleArn         (:callerRole config)
-                                                                                          :RoleSessionName "emr-cli-session"}})]
-                                             (aws/client {:api                  service
-                                                          :region               region
-                                                          :credentials-provider (credentials/profile-credentials-provider
-                                                                                  {:aws/access-key-id     (:Credentials (:AccessKeyId credentials))
-                                                                                   :aws/secret-access-key (:Credentials (:SecretAccessKey credentials))
-                                                                                   :aws/session-token     (:Credentials (:SessionToken credentials))})}))
-                                           (aws/client {:api service :region region}))))
+(defn client-builder
+  [config service & [region-override]]
+  (let [service (keyword service)
+        region (keyword (or region-override (:region config)))]
+    (if (:callerRole config)
+      (let [credentials (aws/invoke
+                          (aws/client {:api :sts :region region})
+                          {:op :AssumeRole :request {:RoleArn         (:callerRole config)
+                                                     :RoleSessionName "emr-cli-session"}})]
+        (aws/client {:api                  service
+                     :region               region
+                     :credentials-provider (credentials/profile-credentials-provider
+                                             {:aws/access-key-id     (:Credentials (:AccessKeyId credentials))
+                                              :aws/secret-access-key (:Credentials (:SecretAccessKey credentials))
+                                              :aws/session-token     (:Credentials (:SessionToken credentials))})}))
+      (aws/client {:api service :region region}))))
 
 (defn parse-conf [conf]
   (let [validation (b/validate (yaml/parse-string conf)
@@ -29,7 +30,7 @@
                                :instanceType [v/required v/string]
                                :key [v/required v/string]
                                :instanceCount [v/required v/integer]
-                               :bidPct [v/required v/integer]
+                               :bidPct [v/integer]
                                :serviceRole [v/required v/string]
                                :instanceRole [v/required v/string]
                                :region [v/required v/string])]

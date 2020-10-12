@@ -12,7 +12,7 @@
         filters [{:Field "tenancy" :Value "shared" :Type "TERM_MATCH"}
                  {:Field "operatingSystem" :Value "Linux" :Type "TERM_MATCH"}
                  {:Field "preInstalledSw" :Value "NA" :Type "TERM_MATCH"}
-                 {:Field "instanceType" :Value (:instance-type config), :Type "TERM_MATCH"}
+                 {:Field "instanceType" :Value (:instanceType config), :Type "TERM_MATCH"}
                  {:Field "location" :Value (get-region-name (:region config)) :Type "TERM_MATCH"}
                  {:Field "capacitystatus" :Value "Used" :Type "TERM_MATCH"}]
         data (aws/invoke pricing {:op :GetProducts :request {:ServiceCode "AmazonEC2" :Filters filters}})
@@ -56,11 +56,11 @@
   "tags of shape {:Key key :Value value}"
   (let [params (calculate-emr-params (:instanceType config) (:instanceCount config))]
     {:Name              (:name config)
-     :LogUri            (:log-uri config)
+     :LogUri            (:logUri config)
      :ReleaseLabel      "emr-6.0.0"
      :VisibleToAllUsers true
-     :JobFlowRole       (:job-role config)
-     :ServiceRole       (:service-role config)
+     :JobFlowRole       (:jobRole config)
+     :ServiceRole       (:serviceRole config)
      :Applications      [{:Name "Spark"} {:Name "Hadoop"} {:Name "Hive"} {:Name "Zeppelin"}]
      :Tags              (:tags config)
      :Instances         {:Ec2SubnetId                 (:subnet config)
@@ -70,14 +70,19 @@
                          :InstanceGroups              [{:Name          "master"
                                                         :InstanceRole  "MASTER"
                                                         :Market        "ON_DEMAND"
-                                                        :InstanceType  (:instance-type config)
+                                                        :InstanceType  (:instanceType config)
                                                         :InstanceCount 1}
-                                                       {:Name          "worker"
-                                                        :InstanceRole  "CORE"
-                                                        :Market        "SPOT"
-                                                        :InstanceType  (:instance-type config)
-                                                        :InstanceCount (:instance-count config)
-                                                        :BidPrice      (calculate-bid-price config)}]}
+                                                       (if (:bidPct config) {:Name          "worker"
+                                                                             :InstanceRole  "CORE"
+                                                                             :Market        "SPOT"
+                                                                             :InstanceType  (:instanceType config)
+                                                                             :InstanceCount (:instanceCount config)
+                                                                             :BidPrice      (calculate-bid-price config)}
+                                                                            {:Name          "worker"
+                                                                             :InstanceRole  "CORE"
+                                                                             :InstanceType  (:instanceType config)
+                                                                             :InstanceCount (:instanceCount config)
+                                                                             :Market        "ON_DEMAND"})]}
      :Configurations    [{:Classification "spark-defaults"
                           :Properties     {:spark.driver.memory           (:executor-memory params)
                                            :spark.driver.cores            (:executor-cores params)
