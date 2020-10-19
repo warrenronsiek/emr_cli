@@ -17,7 +17,6 @@
                :short "cc"
                :description ["creates cluster"]
                :opts [{:option "conf" :short "c" :type :slurp}]
-               :runs (fn [{:keys conf}] (create-cluster (parse-conf conf)))}]
-   })
+               :runs (fn [{:keys conf}] (create-cluster (parse-conf conf)))}]})
 
 (defn -main [& args] (run-cmd args CONFIGURATION))
