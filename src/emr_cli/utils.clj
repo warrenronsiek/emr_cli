@@ -3,6 +3,7 @@
             [bouncer.core :as b]
             [bouncer.validators :as v]
             [cognitect.aws.client.api :as aws]
+            [clojure.spec.alpha :as s]
             [cognitect.aws.credentials :as credentials]))
 
 (defn client-builder
@@ -21,6 +22,24 @@
                                               :aws/secret-access-key (:Credentials (:SecretAccessKey credentials))
                                               :aws/session-token     (:Credentials (:SessionToken credentials))})}))
       (aws/client {:api service :region region}))))
+
+(defmacro ^:private and-spec [defs]
+  `(do ~@(map (fn [[name rest]] `(s/def ~name (s/and ~@rest))) defs)))
+
+(defn parse-conf
+  [conf]
+  (and-spec [[::name [string?]]
+             [::logUri [string?]]
+             [::subnet [string?]]
+             [::instanceType [string?]]
+             [::key [string?]]
+             [::instanceCount [string?]]
+             [::bidPct [string?]]
+             [::instanceRole [string?]]
+             [::region string?]])
+  (s/def ::config (s/keys :req []))
+  (yaml/parse-string conf))
+
 
 (defn parse-conf [conf]
   (let [validation (b/validate (yaml/parse-string conf)

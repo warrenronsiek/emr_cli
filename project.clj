@@ -12,8 +12,7 @@
                  [com.cognitect.aws/s3 "809.2.734.0"]
                  [com.cognitect.aws/elasticmapreduce "801.2.704.0"]
                  [com.cognitect.aws/sts "798.2.678.0"]
-                 [com.cognitect.aws/pricing "770.2.568.0"]
-                 [bouncer "1.0.1"]]
+                 [com.cognitect.aws/pricing "770.2.568.0"]]
   :repl-options {:init-ns emr-cli.core}
   :uberjar-name "emr_cli.jar"
   :main emr_cli.core
