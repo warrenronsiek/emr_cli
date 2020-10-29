@@ -1,7 +1,5 @@
 (ns emr-cli.utils
   (:require [clj-yaml.core :as yaml]
-            [bouncer.core :as b]
-            [bouncer.validators :as v]
             [cognitect.aws.client.api :as aws]
             [clojure.spec.alpha :as s]
             [cognitect.aws.credentials :as credentials]))
@@ -26,37 +24,28 @@
 (defmacro ^:private and-spec [defs]
   `(do ~@(map (fn [[name rest]] `(s/def ~name (s/and ~@rest))) defs)))
 
-(defn parse-conf
+(defn validate-conf
   [conf]
-  (and-spec [[::name [string?]]
+  (and-spec [[::clusterName [string?]]
              [::logUri [string?]]
              [::subnet [string?]]
              [::instanceType [string?]]
-             [::key [string?]]
-             [::instanceCount [string?]]
-             [::bidPct [string?]]
+             [::pemKey [string?]]
+             [::instanceCount [integer?]]
+             [::bidPct [integer? #(and (< % 100) (< 0 %))]]
              [::instanceRole [string?]]
-             [::region string?]])
-  (s/def ::config (s/keys :req []))
-  (yaml/parse-string conf))
+             [::serviceRole [string?]]
+             [::region [string?]]])
+  (s/def ::tag (s/keys :Name :Value))
+  (s/def ::tags (s/coll-of ::tag))
+  (s/def ::config (s/keys :req-un [::clusterName ::logUri ::instanceType ::pemKey ::instanceCount ::bidPct ::instanceRole
+                                ::serviceRole ::region]
+                          :opt-un [::tags]))
+  (s/explain ::config conf)
+  (s/conform ::config conf))
 
 
-(defn parse-conf [conf]
-  (let [validation (b/validate (yaml/parse-string conf)
-                               :name [v/required v/string]
-                               :logUri [v/required v/string]
-                               :subnet [v/required v/string]
-                               :instanceType [v/required v/string]
-                               :key [v/required v/string]
-                               :instanceCount [v/required v/integer]
-                               :bidPct [v/integer]
-                               :serviceRole [v/required v/string]
-                               :instanceRole [v/required v/string]
-                               :region [v/required v/string])]
-    (if (first validation)
-      (do (map #(println %1) (first validation))
-          (throw (Exception. "config validation failed")))
-      (second validation))))
+(defn parse-conf [conf] (validate-conf (yaml/parse-string conf)))
 
 
 (def ec2-info

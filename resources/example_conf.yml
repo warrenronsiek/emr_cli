@@ -1,8 +1,8 @@
-name: test
+clusterName: test
 logUri: "s3://spark-boilerplate/logs/"
 subnet: subnet-b0711ec9
 instanceType: "m4.4xlarge"
-key: warren-laptop
+pemKey: warren-laptop
 instanceCount: 10
 bidPct: 50
 serviceRole: emr-default-role
