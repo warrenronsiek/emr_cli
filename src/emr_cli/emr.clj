@@ -55,11 +55,11 @@
 (defn create-request [config]
   "tags of shape {:Key key :Value value}"
   (let [params (calculate-emr-params (:instanceType config) (:instanceCount config))]
-    {:Name              (:name config)
+    {:Name              (:clusterName config)
      :LogUri            (:logUri config)
      :ReleaseLabel      "emr-6.0.0"
      :VisibleToAllUsers true
-     :JobFlowRole       (:jobRole config)
+     :JobFlowRole       (:instanceProfile config)
      :ServiceRole       (:serviceRole config)
      :Applications      [{:Name "Spark"} {:Name "Hadoop"} {:Name "Hive"} {:Name "Zeppelin"}]
      :Tags              (:tags config)

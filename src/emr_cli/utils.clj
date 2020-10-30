@@ -17,26 +17,27 @@
              [::pemKey [string?]]
              [::instanceCount [integer?]]
              [::bidPct [integer? #(and (< % 100) (< 0 %))]]
-             [::instanceRole [string?]]
+             [::instanceProfile [string?]]
              [::serviceRole [string?]]
              [::callerRole [string?]]
              [::region [string?]]])
   (s/def ::tag (s/keys :Name :Value))
   (s/def ::tags (s/coll-of ::tag))
   (s/def ::config (s/keys :req-un [::clusterName ::logUri ::instanceType ::pemKey ::instanceCount ::bidPct
-                                   ::instanceRole ::serviceRole ::region]
+                                   ::instanceProfile ::serviceRole ::region]
                           :opt-un [::tags ::callerRole]))
-  (s/explain ::config conf)
+  (if (not (s/valid? ::config conf)) (s/explain ::config conf))
   (s/conform ::config conf))
 
 
 (defn parse-conf [conf] (validate-conf (yaml/parse-string conf)))
 
-(defn session-credentials-provider
+(defn ^:private session-credentials-provider
   "need to have this weird glue thing as a consequence of the way providers are implemented"
   [{:keys [access-key-id secret-access-key session-token]}]
   (assert access-key-id "Missing")
   (assert secret-access-key "Missing")
+  (assert session-token "Missing")
   (reify credentials/CredentialsProvider
     (fetch [_]
       {:aws/access-key-id     access-key-id
@@ -56,14 +57,10 @@
         (aws/client {:api                  service
                      :region               region
                      :credentials-provider (session-credentials-provider
-                                             {:aws/access-key-id     (:AccessKeyId keys)
-                                              :aws/secret-access-key (:SecretAccessKey keys)
-                                              :aws/session-token     (:SessionToken keys)})}))
+                                             {:access-key-id     (:AccessKeyId keys)
+                                              :secret-access-key (:SecretAccessKey keys)
+                                              :session-token     (:SessionToken keys)})}))
       (aws/client {:api service :region region}))))
-
-(def c (parse-conf (slurp (io/resource "mm_conf.yml"))))
-(def emr (client-builder c "emr"))
-
 
 (def ec2-info
   {:m4.4xlarge    {:memory 64.0 :cores 16}
