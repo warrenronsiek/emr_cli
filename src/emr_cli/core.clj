@@ -12,7 +12,7 @@
                :short "h"
                :description ["says hi"]
                :opts [{:option "name" :short "n" :type :string :default ""}]
-               :runs hello}
+               :runs #(println "hello")}
               {:command "create-cluster"
                :short "cc"
                :description ["creates cluster"]

@@ -2,24 +2,8 @@
   (:require [clj-yaml.core :as yaml]
             [cognitect.aws.client.api :as aws]
             [clojure.spec.alpha :as s]
-            [cognitect.aws.credentials :as credentials]))
-
-(defn client-builder
-  [config service & [region-override]]
-  (let [service (keyword (if (= service "emr") "elasticmapreduce" service))
-        region (keyword (or region-override (:region config)))]
-    (if (:callerRole config)
-      (let [credentials (aws/invoke
-                          (aws/client {:api :sts :region region})
-                          {:op :AssumeRole :request {:RoleArn         (:callerRole config)
-                                                     :RoleSessionName "emr-cli-session"}})]
-        (aws/client {:api                  service
-                     :region               region
-                     :credentials-provider (credentials/profile-credentials-provider
-                                             {:aws/access-key-id     (:Credentials (:AccessKeyId credentials))
-                                              :aws/secret-access-key (:Credentials (:SecretAccessKey credentials))
-                                              :aws/session-token     (:Credentials (:SessionToken credentials))})}))
-      (aws/client {:api service :region region}))))
+            [cognitect.aws.credentials :as credentials]
+            [clojure.java.io :as io]))
 
 (defmacro ^:private and-spec [defs]
   `(do ~@(map (fn [[name rest]] `(s/def ~name (s/and ~@rest))) defs)))
@@ -35,17 +19,50 @@
              [::bidPct [integer? #(and (< % 100) (< 0 %))]]
              [::instanceRole [string?]]
              [::serviceRole [string?]]
+             [::callerRole [string?]]
              [::region [string?]]])
   (s/def ::tag (s/keys :Name :Value))
   (s/def ::tags (s/coll-of ::tag))
-  (s/def ::config (s/keys :req-un [::clusterName ::logUri ::instanceType ::pemKey ::instanceCount ::bidPct ::instanceRole
-                                ::serviceRole ::region]
-                          :opt-un [::tags]))
+  (s/def ::config (s/keys :req-un [::clusterName ::logUri ::instanceType ::pemKey ::instanceCount ::bidPct
+                                   ::instanceRole ::serviceRole ::region]
+                          :opt-un [::tags ::callerRole]))
   (s/explain ::config conf)
   (s/conform ::config conf))
 
 
 (defn parse-conf [conf] (validate-conf (yaml/parse-string conf)))
+
+(defn session-credentials-provider
+  "need to have this weird glue thing as a consequence of the way providers are implemented"
+  [{:keys [access-key-id secret-access-key session-token]}]
+  (assert access-key-id "Missing")
+  (assert secret-access-key "Missing")
+  (reify credentials/CredentialsProvider
+    (fetch [_]
+      {:aws/access-key-id     access-key-id
+       :aws/secret-access-key secret-access-key
+       :aws/session-token     session-token})))
+
+(defn client-builder
+  [config service & [region-override]]
+  (let [service (keyword (if (= service "emr") "elasticmapreduce" service))
+        region (keyword (or region-override (:region config)))]
+    (if (:callerRole config)
+      (let [credentials (aws/invoke
+                          (aws/client {:api :sts :region region})
+                          {:op :AssumeRole :request {:RoleArn         (:callerRole config)
+                                                     :RoleSessionName "emr-cli-session"}})
+            keys (:Credentials credentials)]
+        (aws/client {:api                  service
+                     :region               region
+                     :credentials-provider (session-credentials-provider
+                                             {:aws/access-key-id     (:AccessKeyId keys)
+                                              :aws/secret-access-key (:SecretAccessKey keys)
+                                              :aws/session-token     (:SessionToken keys)})}))
+      (aws/client {:api service :region region}))))
+
+(def c (parse-conf (slurp (io/resource "mm_conf.yml"))))
+(def emr (client-builder c "emr"))
 
 
 (def ec2-info

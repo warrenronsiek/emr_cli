@@ -101,3 +101,5 @@
 (defn create-cluster [conf]
   (let [emr (utils/client-builder conf "emr")]
     (aws/invoke emr {:op :RunJobFlow :request (create-request conf)})))
+
+(create-cluster (utils/parse-conf (slurp (io/resource "mm_conf.yml"))))
