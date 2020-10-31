@@ -100,25 +100,26 @@
                          {:Classification "capacity-scheduler"
                           :Properties     {:yarn.scheduler.capacity.resource-calculator "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"}}]
      :Steps             (flat-conj
-                              {:Name            "setup hadoop debugging"
-                               :ActionOnFailure "TERMINATE_CLUSTER"
-                               :HadoopJarStep   {:Jar  "s3://us-east-1.elasticmapreduce/libs/script-runner/script-runner.jar"
-                                                 :Args ["s3://us-east-1.elasticmapreduce/libs/state-pusher/0.1/fetch"]}}
-                              (if (:jar config)
-                                [{:Name            "copy jar"
-                                  :ActionOnFailure "TERMINATE_CLUSTER"
-                                  :HadoopJarStep   {:Jar  "command-runner.jar"
-                                                    :Args ["aws", "s3", "cp", (:jar config), "/home/hadoop/ "]}}
-                                 {:Name "run jar"
-                                  :ActionOnFailure "TERMINATE_CLUSTER"
-                                  :HadoopJarStep {:Jar "command-runner.jar"
+                          {:Name            "setup hadoop debugging"
+                           :ActionOnFailure "TERMINATE_CLUSTER"
+                           :HadoopJarStep   {:Jar  "s3://us-east-1.elasticmapreduce/libs/script-runner/script-runner.jar"
+                                             :Args ["s3://us-east-1.elasticmapreduce/libs/state-pusher/0.1/fetch"]}}
+                          (if (:jar config)
+                            (let [jarName (str "/home/hadoop/" (last (str/split (:jar config) #"/")))]
+                              [{:Name            "copy jar"
+                                :ActionOnFailure "TERMINATE_CLUSTER"
+                                :HadoopJarStep   {:Jar  "command-runner.jar"
+                                                  :Args ["aws", "s3", "cp", (:jar config), jarName]}}
+                               {:Name            "run jar"
+                                :ActionOnFailure "TERMINATE_CLUSTER"
+                                :HadoopJarStep   {:Jar  "command-runner.jar"
                                                   :Args (flat-conj
-                                                              "spark-submit"
-                                                              (if (:jarClass config) ["--class" (:jarClass config)])
-                                                              "--master" "yarn"
-                                                              "--deploy-mode" "cluster"
-                                                              (str "/home/hadoop/" (last (str/split (:jar config) #"/")))
-                                                              (map second (:jarArgs config)))}}]))}))
+                                                          "spark-submit"
+                                                          (if (:jarClass config) ["--class" (:jarClass config)])
+                                                          "--master" "yarn"
+                                                          "--deploy-mode" "cluster"
+                                                          jarName
+                                                          (map second (:jarArgs config)))}}])))}))
 
 
 (defn create-cluster [conf]
