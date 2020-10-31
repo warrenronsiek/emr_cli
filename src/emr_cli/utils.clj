@@ -20,13 +20,19 @@
              [::instanceProfile [string?]]
              [::serviceRole [string?]]
              [::callerRole [string?]]
+             [::jar [string?]]
+             [::jarClass [string?]]
              [::region [string?]]])
+  (s/def ::jarArg (s/or :s string? :i int? :d double?))
+  (s/def ::jarArgs (s/coll-of ::jarArg))
   (s/def ::tag (s/keys :Name :Value))
   (s/def ::tags (s/coll-of ::tag))
   (s/def ::config (s/keys :req-un [::clusterName ::logUri ::instanceType ::pemKey ::instanceCount ::bidPct
                                    ::instanceProfile ::serviceRole ::region]
-                          :opt-un [::tags ::callerRole]))
+                          :opt-un [::tags ::callerRole ::jar ::jarClass ::jarArgs]))
   (if (not (s/valid? ::config conf)) (s/explain ::config conf))
+  (if (:jarClass conf) (assert (:jar conf)))
+  (if (:jarArgs conf) (assert (:jar conf)))
   (s/conform ::config conf))
 
 

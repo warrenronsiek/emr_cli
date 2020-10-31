@@ -3,7 +3,8 @@
             [emr-cli.utils :as utils]
             [clojure.core :refer [<= >= < >]]
             [clojure.java.io :as io]
-            [clj-yaml.core :as yaml]))
+            [clj-yaml.core :as yaml]
+            [clojure.string :as str]))
 
 (defn calculate-bid-price [config]
   (let [pricing (utils/client-builder config "pricing")
@@ -52,6 +53,8 @@
      :yarn-allocateable-memory-per-node (str (* allocateable-memory-per-node 1024))
      :yarn-allocateable-cores-per-node  (str allocateable-cores-per-node)}))
 
+(defn ^:private flat-conj [& args] (filter some? (flatten (conj [] args))))
+
 (defn create-request [config]
   "tags of shape {:Key key :Value value}"
   (let [params (calculate-emr-params (:instanceType config) (:instanceCount config))]
@@ -64,8 +67,8 @@
      :Applications      [{:Name "Spark"} {:Name "Hadoop"} {:Name "Hive"} {:Name "Zeppelin"}]
      :Tags              (:tags config)
      :Instances         {:Ec2SubnetId                 (:subnet config)
-                         :Ec2KeyName                  (:key config)
-                         :KeepJobFlowAliveWhenNoSteps true
+                         :Ec2KeyName                  (:pemKey config)
+                         :KeepJobFlowAliveWhenNoSteps (if (:jar config) true false)
                          :TerminationProtected        false
                          :InstanceGroups              [{:Name          "master"
                                                         :InstanceRole  "MASTER"
@@ -90,16 +93,36 @@
                                            :spark.executor.instances      (:executor-instances params)
                                            :spark.executor.cores          (:executor-cores params)
                                            :spark.sql.shuffle.partitions  (:shuffle-partitions params)
-                                           :spark.executor.memoryOverhead (:memory-overhead params)}}
+                                           :spark.executor.memoryOverhead (:yarn-memory-overhead params)}}
                          {:Classification "yarn-site"
                           :Properties     {:yarn.nodemanager.resource.memory-mb  (:yarn-allocateable-memory-per-node params)
                                            :yarn.nodemanager.resource.cpu-vcores (:yarn-allocateable-cores-per-node params)}}
                          {:Classification "capacity-scheduler"
-                          :Properties     {:yarn.scheduler.capacity.resource-calculator "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"}}]}))
+                          :Properties     {:yarn.scheduler.capacity.resource-calculator "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"}}]
+     :Steps             (flat-conj
+                              {:Name            "setup hadoop debugging"
+                               :ActionOnFailure "TERMINATE_CLUSTER"
+                               :HadoopJarStep   {:Jar  "s3://us-east-1.elasticmapreduce/libs/script-runner/script-runner.jar"
+                                                 :Args ["s3://us-east-1.elasticmapreduce/libs/state-pusher/0.1/fetch"]}}
+                              (if (:jar config)
+                                [{:Name            "copy jar"
+                                  :ActionOnFailure "TERMINATE_CLUSTER"
+                                  :HadoopJarStep   {:Jar  "command-runner.jar"
+                                                    :Args ["aws", "s3", "cp", (:jar config), "/home/hadoop/ "]}}
+                                 {:Name "run jar"
+                                  :ActionOnFailure "TERMINATE_CLUSTER"
+                                  :HadoopJarStep {:Jar "command-runner.jar"
+                                                  :Args (flat-conj
+                                                              "spark-submit"
+                                                              (if (:jarClass config) ["--class" (:jarClass config)])
+                                                              "--master" "yarn"
+                                                              "--deploy-mode" "cluster"
+                                                              (str "/home/hadoop/" (last (str/split (:jar config) #"/")))
+                                                              (map second (:jarArgs config)))}}]))}))
 
 
 (defn create-cluster [conf]
   (let [emr (utils/client-builder conf "emr")]
     (aws/invoke emr {:op :RunJobFlow :request (create-request conf)})))
 
-(create-cluster (utils/parse-conf (slurp (io/resource "mm_conf.yml"))))
+;(create-cluster (utils/parse-conf (slurp (io/resource "mm_conf.yml"))))
