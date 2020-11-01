@@ -11,4 +11,4 @@ pom.xml.asc
 .hgignore
 .hg/
 .idea
-**/mm_conf.yml
+resources/mm_*

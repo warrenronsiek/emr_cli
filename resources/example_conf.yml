@@ -7,7 +7,6 @@ instanceCount: 10
 bidPct: 50
 serviceRole: emr-default-role
 instanceRole: emr-default-instance-role
-region: us-east-1
 tags:
   - Key: Testkey1
     Value: TestValue1

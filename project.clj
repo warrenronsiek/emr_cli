@@ -9,6 +9,7 @@
                  [clj-commons/clj-yaml "0.7.1"]
                  [com.cognitect.aws/api "0.8.474"]
                  [com.cognitect.aws/endpoints "1.1.11.842"]
+                 [com.cognitect.aws/ec2 "809.2.734.0"]
                  [com.cognitect.aws/s3 "809.2.734.0"]
                  [com.cognitect.aws/elasticmapreduce "801.2.704.0"]
                  [com.cognitect.aws/sts "798.2.678.0"]

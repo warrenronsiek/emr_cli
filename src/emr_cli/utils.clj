@@ -3,6 +3,7 @@
             [cognitect.aws.client.api :as aws]
             [clojure.spec.alpha :as s]
             [cognitect.aws.credentials :as credentials]
+            [clojure.string :as str]
             [clojure.java.io :as io]))
 
 (defmacro ^:private and-spec [defs]
@@ -21,14 +22,13 @@
              [::serviceRole [string?]]
              [::callerRole [string?]]
              [::jar [string?]]
-             [::jarClass [string?]]
-             [::region [string?]]])
+             [::jarClass [string?]]])
   (s/def ::jarArg (s/or :s string? :i int? :d double?))
   (s/def ::jarArgs (s/coll-of ::jarArg))
   (s/def ::tag (s/keys :Name :Value))
   (s/def ::tags (s/coll-of ::tag))
   (s/def ::config (s/keys :req-un [::clusterName ::logUri ::instanceType ::pemKey ::instanceCount ::bidPct
-                                   ::instanceProfile ::serviceRole ::region]
+                                   ::instanceProfile ::serviceRole]
                           :opt-un [::tags ::callerRole ::jar ::jarClass ::jarArgs]))
   (if (not (s/valid? ::config conf)) (s/explain ::config conf))
   (if (:jarClass conf) (assert (:jar conf)))
@@ -67,6 +67,15 @@
                                               :secret-access-key (:SecretAccessKey keys)
                                               :session-token     (:SessionToken keys)})}))
       (aws/client {:api service :region region}))))
+
+(defn get-region [config]
+  (let [client (client-builder config "ec2")
+        subnet (aws/invoke client {:op :DescribeSubnets :request {:SubnetIds ["subnet-53c59815"]}})
+        sub-region (-> subnet :Subnets first :AvailabilityZone)]
+    (str/join (drop-last 1 sub-region))))
+
+;(parse-conf (slurp (io/resource "mm_analytics.yml")))
+
 
 (def ec2-info
   {:m4.4xlarge    {:memory 64.0 :cores 16}

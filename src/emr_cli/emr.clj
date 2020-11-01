@@ -14,7 +14,7 @@
                  {:Field "operatingSystem" :Value "Linux" :Type "TERM_MATCH"}
                  {:Field "preInstalledSw" :Value "NA" :Type "TERM_MATCH"}
                  {:Field "instanceType" :Value (:instanceType config), :Type "TERM_MATCH"}
-                 {:Field "location" :Value (get-region-name (:region config)) :Type "TERM_MATCH"}
+                 {:Field "location" :Value (get-region-name (utils/get-region config)) :Type "TERM_MATCH"}
                  {:Field "capacitystatus" :Value "Used" :Type "TERM_MATCH"}]
         data (aws/invoke pricing {:op :GetProducts :request {:ServiceCode "AmazonEC2" :Filters filters}})
         on-demand (:OnDemand (:terms (yaml/parse-string (first (:PriceList data)))))
@@ -68,7 +68,7 @@
      :Tags              (:tags config)
      :Instances         {:Ec2SubnetId                 (:subnet config)
                          :Ec2KeyName                  (:pemKey config)
-                         :KeepJobFlowAliveWhenNoSteps (if (:jar config) true false)
+                         :KeepJobFlowAliveWhenNoSteps (some? (:jar config))
                          :TerminationProtected        false
                          :InstanceGroups              [{:Name          "master"
                                                         :InstanceRole  "MASTER"
@@ -125,5 +125,3 @@
 (defn create-cluster [conf]
   (let [emr (utils/client-builder conf "emr")]
     (aws/invoke emr {:op :RunJobFlow :request (create-request conf)})))
-
-;(create-cluster (utils/parse-conf (slurp (io/resource "mm_conf.yml"))))

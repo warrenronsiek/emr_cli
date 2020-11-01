@@ -7,7 +7,6 @@ instanceCount: "asdf"
 bidPct: 0
 serviceRole: i3i3i
 instanceRole: 123
-region: us-east-7
 tags:
   - Key: Testkey1
     Value: TestValue1

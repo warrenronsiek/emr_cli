@@ -17,6 +17,7 @@
     <orderEntry type="library" name="Leiningen: clj-commons/clj-yaml:0.7.1" level="project" />
     <orderEntry type="library" name="Leiningen: clojure-complete:0.2.5" level="project" />
     <orderEntry type="library" name="Leiningen: com.cognitect.aws/api:0.8.474" level="project" />
+    <orderEntry type="library" name="Leiningen: com.cognitect.aws/ec2:809.2.734.0" level="project" />
     <orderEntry type="library" name="Leiningen: com.cognitect.aws/elasticmapreduce:801.2.704.0" level="project" />
     <orderEntry type="library" name="Leiningen: com.cognitect.aws/endpoints:1.1.11.842" level="project" />
     <orderEntry type="library" name="Leiningen: com.cognitect.aws/pricing:770.2.568.0" level="project" />

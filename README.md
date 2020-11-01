@@ -21,11 +21,11 @@ A command line utility for spinning up a EMR clusters from config files.
 * serviceRole: the name of the role EMR service assumes to create the cluster (typically EMR_DefaultRole)
 * instanceProfile: the ARN of the IAM profile that you want the cluster instances to use 
 * callerRole: if you need to assume a role to create the cluster pass the ARN here (optional) 
-* region: the region you want to create the cluster in
 * tags: any tags you want to apply
 
-## Example configuration:
+## Example configurations:
 
+### Run a jar
 ```yaml
 clusterName: mycluster
 logUri: "s3://mys3bucket/logs/"
@@ -44,7 +44,23 @@ jarArgs:
   - "2020-10-28"
 instanceProfile: instance-profile
 callerRole: arn:aws:iam::1234567890:role/role-to-assume
-region: us-east-1
+tags:
+  - Key: Application Type
+    Value: fizzbuzz
+```
+
+### Analytics
+```yaml
+clusterName: mycluster
+logUri: "s3://mys3bucket/logs/"
+subnet: my-subnet-120938
+instanceType: "c5.4xlarge"
+pemKey: mypemkey
+instanceCount: 15
+bidPct: 50
+serviceRole: EMR_DefaultRole
+instanceProfile: instance-profile
+callerRole: arn:aws:iam::1234567890:role/role-to-assume
 tags:
   - Key: Application Type
     Value: fizzbuzz
