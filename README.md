@@ -1,22 +1,51 @@
 # emr_cli
+A command line utility for spinning up a EMR clusters from config files.
 
-A Clojure library designed to ... well, that part is up to you.
+## Requirements 
+* Java 8
 
 ## Usage
+* create cluster `java -jar emr_cli.jar create-cluster --conf mm_conf.yml`
 
-FIXME
+## Configuration fields
+* clusterName: the name of the cluster
+* logUri: the s3 path you want to store logs in
+* subnet: the subnet the cluster gets created in
+* instanceType: duh
+* pemKey: the name of the key used in the cluster. Do not inclued the `.pem` extension
+* instanceCount: quantity of instances
+* bidPct: percent of max price that you want to pay
+* jar: s3 path of the jar you want to run (optional)
+* jarClass: the entrypoint class of your jar (optional)
+* jarArgs: arguments for the jar
+* serviceRole: the name of the role EMR service assumes to create the cluster (typically EMR_DefaultRole)
+* instanceProfile: the ARN of the IAM profile that you want the cluster instances to use 
+* callerRole: if you need to assume a role to create the cluster pass the ARN here (optional) 
+* region: the region you want to create the cluster in
+* tags: any tags you want to apply
 
-## License
+## Example configuration:
 
-Copyright © 2020 FIXME
-
-This program and the accompanying materials are made available under the
-terms of the Eclipse Public License 2.0 which is available at
-http://www.eclipse.org/legal/epl-2.0.
-
-This Source Code may also be made available under the following Secondary
-Licenses when the conditions for such availability set forth in the Eclipse
-Public License, v. 2.0 are satisfied: GNU General Public License as published by
-the Free Software Foundation, either version 2 of the License, or (at your
-option) any later version, with the GNU Classpath Exception which is available
-at https://www.gnu.org/software/classpath/license.html.
+```yaml
+clusterName: mycluster
+logUri: "s3://mys3bucket/logs/"
+subnet: my-subnet-120938
+instanceType: "c5.4xlarge"
+pemKey: mypemkey
+instanceCount: 15
+bidPct: 50
+serviceRole: EMR_DefaultRole
+jar: "s3://path/to/jar/myjar.jar"
+jarClass: com.warrenronsiek.myjar.Main
+jarArgs:
+  - "--env"
+  - "test"
+  - "--date"
+  - "2020-10-28"
+instanceProfile: instance-profile
+callerRole: arn:aws:iam::1234567890:role/role-to-assume
+region: us-east-1
+tags:
+  - Key: Application Type
+    Value: fizzbuzz
+```

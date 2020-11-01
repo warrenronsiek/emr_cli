@@ -4,19 +4,21 @@
             [emr-cli.utils :refer [parse-conf]])
   (:gen-class))
 
+(defn hello [& args] (println (str "hello " (map str args))))
+(defn cc [{:keys [conf]}] (create-cluster (parse-conf conf)))
 (def CONFIGURATION
-  {:app {:command "emr-cli"
-         :description "creates your emr clusters"
-         :version "0.0.1"}
-   :commands [{:command "hi"
-               :short "h"
-               :description ["says hi"]
-               :opts [{:option "name" :short "n" :type :string :default ""}]
-               :runs #(println "hello")}
-              {:command "create-cluster"
-               :short "cc"
-               :description ["creates cluster"]
-               :opts [{:option "conf" :short "c" :type :slurp}]
-               :runs (fn [{:keys conf}] (create-cluster (parse-conf conf)))}]})
+  {:command "emr-cli"
+   :description "creates your emr clusters"
+   :version "0.0.1"
+   :subcommands [{:command "hi"
+                  :short "h"
+                  :description ["says hi"]
+                  :opts [{:option "name" :short "n" :type :string :default ""}]
+                  :runs hello}
+                 {:command "create-cluster"
+                  :short "cc"
+                  :description ["creates cluster"]
+                  :opts [{:option "conf" :short "c" :type :slurp}]
+                  :runs cc}]})
 
 (defn -main [& args] (run-cmd args CONFIGURATION))
