@@ -70,7 +70,7 @@
 
 (defn get-region [config]
   (let [client (client-builder config "ec2")
-        subnet (aws/invoke client {:op :DescribeSubnets :request {:SubnetIds ["subnet-53c59815"]}})
+        subnet (aws/invoke client {:op :DescribeSubnets :request {:SubnetIds [(:subnet config)]}})
         sub-region (-> subnet :Subnets first :AvailabilityZone)]
     (str/join (drop-last 1 sub-region))))
 

@@ -18,24 +18,24 @@
 
 (deftest price-calculation-test
   (testing "price calculation"
-    (is (instance? String (calculate-bid-price {:instanceType "m4.4xlarge" :region "us-east-1" :bidPct 50})))
-    (is (instance? Float (Float/parseFloat (calculate-bid-price {:instanceType "m4.4xlarge" :region "us-east-1" :bidPct 50}))))
-    (is (<= 0.1 (Float/parseFloat (calculate-bid-price {:instanceType "m4.4xlarge" :region "us-east-1" :bidPct 50})) 1.0))))
+    (is (instance? String (calculate-bid-price {:instanceType "m4.4xlarge" :subnet "subnet-0b087578ef9f3da24" :bidPct 50})))
+    (is (instance? Float (Float/parseFloat (calculate-bid-price {:instanceType "m4.4xlarge" :subnet "subnet-0b087578ef9f3da24" :bidPct 50}))))
+    (is (<= 0.1 (Float/parseFloat (calculate-bid-price {:instanceType "m4.4xlarge" :subnet "subnet-0b087578ef9f3da24" :bidPct 50})) 1.0))))
 
 (deftest create-request-test
   (let [params (parse-conf (slurp (io/resource "example_conf.yml")))
         request (create-request params)]
     (testing "top level request arguments"
-      (is (= (:Name request) (:name params)))
+      (is (= (:Name request) (:clusterName params)))
       (is (= (:LogUri request) (:logUri params)))
-      (is (= (:JobFlowRole request) (:jobRole params)))
+      (is (= (:JobFlowRole request) (:instanceProfile params)))
       (is (= (:ServiceRole request) (:serviceRole params)))
       (is (= (:Tags request) (:tags params))))
     (testing "level 2 nested arguments"
       (is (= (-> request (:Instances) (:Ec2SubnetId))
              (:subnet params)))
       (is (= (-> request (:Instances) (:Ec2KeyName))
-             (:key params))))
+             (:pemKey params))))
     (testing "instance groups"
       (let [instances (:InstanceGroups (:Instances request))
             master (first instances)

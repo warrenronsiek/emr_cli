@@ -7,13 +7,13 @@
             [clojure.string :as str]))
 
 (defn calculate-bid-price [config]
-  (let [pricing (utils/client-builder config "pricing")
+  (let [pricing (utils/client-builder config "pricing" "us-east-1")
         endpoints (yaml/parse-string (slurp (io/resource "endpoints.json")))
         get-region-name (fn [region-code] (:description ((keyword region-code) (:regions (first (:partitions endpoints))))))
         filters [{:Field "tenancy" :Value "shared" :Type "TERM_MATCH"}
                  {:Field "operatingSystem" :Value "Linux" :Type "TERM_MATCH"}
                  {:Field "preInstalledSw" :Value "NA" :Type "TERM_MATCH"}
-                 {:Field "instanceType" :Value (:instanceType config), :Type "TERM_MATCH"}
+                 {:Field "instanceType" :Value (:instanceType config) :Type "TERM_MATCH"}
                  {:Field "location" :Value (get-region-name (utils/get-region config)) :Type "TERM_MATCH"}
                  {:Field "capacitystatus" :Value "Used" :Type "TERM_MATCH"}]
         data (aws/invoke pricing {:op :GetProducts :request {:ServiceCode "AmazonEC2" :Filters filters}})

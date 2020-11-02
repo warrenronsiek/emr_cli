@@ -1,13 +1,11 @@
-name: test
-logUri: "s3://spark-boilerplate/logs/"
-subnet: subnet-b0711ec9
-instanceType: "m4.4xlarge"
-key: warren-laptop
-instanceCount: 10
+clusterName: mycluster
+logUri: "s3://mys3bucket/logs/"
+subnet: subnet-0b087578ef9f3da24
+instanceType: "c5.4xlarge"
+pemKey: warren-laptop
+instanceCount: 2
 serviceRole: emr-default-role
-instanceRole: emr-default-instance-role
+instanceProfile: emr-default-instance-role
 tags:
-  - Key: Testkey1
-    Value: TestValue1
-  - Key: Testkey2
-    Value: TestValue2
+  - Key: Application Type
+    Value: fizzbuzz
