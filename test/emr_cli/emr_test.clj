@@ -50,30 +50,36 @@
           (is (= (:Market worker) "SPOT"))
           (is (= (:InstanceType worker) (:instanceType params)))
           (is (= (:InstanceCount worker) (:instanceCount params)))
-          (is (instance? Float (Float/parseFloat (:BidPrice worker)))))
-        (testing "worker group on demand"
-          (let [demand-params (parse-conf (slurp (io/resource "example_conf_ondemand.yml")))
-                demand-worker (-> demand-params
-                                  (create-request)
-                                  (:Instances)
-                                  (:InstanceGroups)
-                                  (second))]
-            (is (= demand-worker {:Name          "worker"
-                                  :InstanceRole  "CORE"
-                                  :InstanceType  (:instanceType demand-params)
-                                  :InstanceCount (:instanceCount demand-params)
-                                  :Market        "ON_DEMAND"}))))))
-    (testing "cluster configuration props"
-      (let [emr-params (calculate-emr-params (:instanceType params) (:instanceCount params))
-            config (:Configurations request)
-            spark-defaults (:Properties (first config))
-            yarn-site (:Properties (second config))]
-        (is (= (:spark.driver.memory spark-defaults) (:executor-memory emr-params)))
-        (is (= (:spark.driver.cores spark-defaults) (:executor-cores emr-params)))
-        (is (= (:spark.executor.memory spark-defaults) (:executor-memory emr-params)))
-        (is (= (:spark.executor.instances spark-defaults) (:executor-instances emr-params)))
-        (is (= (:spark.executor.cores spark-defaults) (:executor-cores emr-params)))
-        (is (= (:spark.sql.shuffle.partitions spark-defaults) (:shuffle-partitions emr-params)))
-        (is (= (:spark.executor.memoryOverhead spark-defaults) (:memory-overhead emr-params)))
-        (is (= (:yarn.nodemanager.resource.memory-mb yarn-site) (:yarn-allocateable-memory-per-node emr-params)))
-        (is (= (:yarn.nodemanager.resource.cpu-vcores yarn-site) (:yarn-allocateable-cores-per-node emr-params)))))))
+          (is (instance? Float (Float/parseFloat (:BidPrice worker)))))))))
+
+(deftest cluster-config-request
+  (testing "cluster configuration props"
+    (let [params (parse-conf (slurp (io/resource "example_conf.yml")))
+          request (create-request params)
+          emr-params (calculate-emr-params (:instanceType params) (:instanceCount params))
+          config (:Configurations request)
+          spark-defaults (:Properties (first config))
+          yarn-site (:Properties (second config))]
+      (is (= (:spark.driver.memory spark-defaults) (:executor-memory emr-params)))
+      (is (= (:spark.driver.cores spark-defaults) (:executor-cores emr-params)))
+      (is (= (:spark.executor.memory spark-defaults) (:executor-memory emr-params)))
+      (is (= (:spark.executor.instances spark-defaults) (:executor-instances emr-params)))
+      (is (= (:spark.executor.cores spark-defaults) (:executor-cores emr-params)))
+      (is (= (:spark.sql.shuffle.partitions spark-defaults) (:shuffle-partitions emr-params)))
+      (is (= (:spark.executor.memoryOverhead spark-defaults) (:yarn-memory-overhead emr-params)))
+      (is (= (:yarn.nodemanager.resource.memory-mb yarn-site) (:yarn-allocateable-memory-per-node emr-params)))
+      (is (= (:yarn.nodemanager.resource.cpu-vcores yarn-site) (:yarn-allocateable-cores-per-node emr-params))))))
+
+(deftest on-demand-request
+  (testing "worker group on demand"
+    (let [demand-params (parse-conf (slurp (io/resource "example_conf_ondemand.yml")))
+          demand-worker (-> demand-params
+                            (create-request)
+                            (:Instances)
+                            (:InstanceGroups)
+                            (second))]
+      (is (= demand-worker {:Name          "worker"
+                            :InstanceRole  "CORE"
+                            :InstanceType  (:instanceType demand-params)
+                            :InstanceCount (:instanceCount demand-params)
+                            :Market        "ON_DEMAND"})))))
