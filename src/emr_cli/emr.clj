@@ -68,7 +68,7 @@
      :Tags              (:tags config)
      :Instances         {:Ec2SubnetId                 (:subnet config)
                          :Ec2KeyName                  (:pemKey config)
-                         :KeepJobFlowAliveWhenNoSteps (some? (:jar config))
+                         :KeepJobFlowAliveWhenNoSteps (not (some? (:jar config)))
                          :TerminationProtected        false
                          :InstanceGroups              [{:Name          "master"
                                                         :InstanceRole  "MASTER"

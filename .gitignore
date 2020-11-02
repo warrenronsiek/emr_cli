@@ -12,3 +12,4 @@ pom.xml.asc
 .hg/
 .idea
 resources/mm_*
+**/mm_
