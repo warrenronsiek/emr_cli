@@ -7,12 +7,12 @@
 (deftest good-conf-consumption
   (testing "configs validate"
     (let [good-conf (parse-conf (slurp (io/resource "example_conf.yml")))]
-      (is (= (:clusterName good-conf) "test"))
-      (is (= (:logUri good-conf) "s3://spark-boilerplate/logs/"))
-      (is (= (:subnet good-conf) "subnet-b0711ec9"))
-      (is (= (:instanceType good-conf) "m4.4xlarge"))
+      (is (= (:clusterName good-conf) "mycluster"))
+      (is (= (:logUri good-conf) "s3://mys3bucket/logs/"))
+      (is (= (:subnet good-conf) "subnet-0b087578ef9f3da24"))
+      (is (= (:instanceType good-conf) "c5.4xlarge"))
       (is (= (:pemKey good-conf) "warren-laptop"))
-      (is (= (:instanceCount good-conf) 10))
+      (is (= (:instanceCount good-conf) 2))
       (is (= (:bidPct good-conf) 50))
       (is (= (:serviceRole good-conf) "emr-default-role"))
       (is (= (:instanceRole good-conf) "emr-default-instance-role"))
