@@ -9,7 +9,8 @@
 (defn calculate-bid-price [config]
   (let [pricing (utils/client-builder config "pricing" "us-east-1")
         endpoints (yaml/parse-string (slurp (io/resource "endpoints.json")))
-        get-region-name (fn [region-code] (:description ((keyword region-code) (:regions (first (:partitions endpoints))))))
+        get-region-name (fn [region-code] (:description ((keyword region-code) (:regions
+                                                                                 (first (:partitions endpoints))))))
         filters [{:Field "tenancy" :Value "shared" :Type "TERM_MATCH"}
                  {:Field "operatingSystem" :Value "Linux" :Type "TERM_MATCH"}
                  {:Field "preInstalledSw" :Value "NA" :Type "TERM_MATCH"}
@@ -49,7 +50,8 @@
      :executor-cores                    (str cores-per-executor)
      :executor-instances                (str num-executors)
      :shuffle-partitions                (str shuffle-parallelism)
-     :yarn-memory-overhead              (str (int (Math/ceil (* allocateable-memory-per-node (- 1 memory-overhead-multiplier)))))
+     :yarn-memory-overhead              (str (int (Math/ceil (* allocateable-memory-per-node
+                                                                (- 1 memory-overhead-multiplier)))))
      :yarn-allocateable-memory-per-node (str (* allocateable-memory-per-node 1024))
      :yarn-allocateable-cores-per-node  (str allocateable-cores-per-node)}))
 

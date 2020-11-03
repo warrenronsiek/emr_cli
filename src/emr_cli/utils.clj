@@ -27,9 +27,9 @@
   (s/def ::jarArgs (s/coll-of ::jarArg))
   (s/def ::tag (s/keys :Name :Value))
   (s/def ::tags (s/coll-of ::tag))
-  (s/def ::config (s/keys :req-un [::clusterName ::logUri ::instanceType ::pemKey ::instanceCount ::bidPct
+  (s/def ::config (s/keys :req-un [::clusterName ::logUri ::instanceType ::pemKey ::instanceCount
                                    ::instanceProfile ::serviceRole]
-                          :opt-un [::tags ::callerRole ::jar ::jarClass ::jarArgs]))
+                          :opt-un [::tags ::callerRole ::jar ::jarClass ::jarArgs ::bidPct]))
   (if (not (s/valid? ::config conf)) (s/explain ::config conf))
   (if (:jarClass conf) (assert (:jar conf)))
   (if (:jarArgs conf) (assert (:jar conf)))
@@ -73,9 +73,6 @@
         subnet (aws/invoke client {:op :DescribeSubnets :request {:SubnetIds [(:subnet config)]}})
         sub-region (-> subnet :Subnets first :AvailabilityZone)]
     (str/join (drop-last 1 sub-region))))
-
-;(parse-conf (slurp (io/resource "mm_analytics.yml")))
-
 
 (def ec2-info
   {:m4.4xlarge    {:memory 64.0 :cores 16}

@@ -35,7 +35,9 @@
       (is (= (-> request (:Instances) (:Ec2SubnetId))
              (:subnet params)))
       (is (= (-> request (:Instances) (:Ec2KeyName))
-             (:pemKey params))))
+             (:pemKey params)))
+      (is (= (-> request (:Instances) (:KeepJobFlowAliveWhenNoSteps))
+             (not (some? (:jar params))))))
     (testing "instance groups"
       (let [instances (:InstanceGroups (:Instances request))
             master (first instances)
