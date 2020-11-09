@@ -60,7 +60,7 @@
   (let [params (calculate-emr-params (:instanceType config) (:instanceCount config))]
     {:Name              (:clusterName config)
      :LogUri            (:logUri config)
-     :ReleaseLabel      "emr-6.0.0"
+     :ReleaseLabel      (:emrVersion config "emr-6.1.0")
      :VisibleToAllUsers true
      :JobFlowRole       (:instanceProfile config)
      :ServiceRole       (:serviceRole config)

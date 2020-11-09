@@ -14,6 +14,7 @@ A command line utility for spinning up a EMR clusters from config files.
 * instanceType: duh
 * pemKey: the name of the key used in the cluster. Do not inclued the `.pem` extension
 * instanceCount: quantity of instances
+* emrVersion: duh. defaults to 6.1.0
 * bidPct: percent of max price that you want to pay
 * jar: s3 path of the jar you want to run (optional)
 * jarClass: the entrypoint class of your jar (optional)

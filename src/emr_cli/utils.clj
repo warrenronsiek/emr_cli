@@ -22,6 +22,7 @@
              [::serviceRole [string?]]
              [::callerRole [string?]]
              [::jar [string?]]
+             [::emrVersion [string?]]
              [::jarClass [string?]]])
   (s/def ::jarArg (s/or :s string? :i int? :d double?))
   (s/def ::jarArgs (s/coll-of ::jarArg))
@@ -29,7 +30,7 @@
   (s/def ::tags (s/coll-of ::tag))
   (s/def ::config (s/keys :req-un [::clusterName ::logUri ::instanceType ::pemKey ::instanceCount ::bidPct
                                    ::instanceProfile ::serviceRole]
-                          :opt-un [::tags ::callerRole ::jar ::jarClass ::jarArgs]))
+                          :opt-un [::tags ::callerRole ::jar ::jarClass ::jarArgs ::emrVersion]))
   (if (not (s/valid? ::config conf)) (s/explain ::config conf))
   (if (:jarClass conf) (assert (:jar conf)))
   (if (:jarArgs conf) (assert (:jar conf)))
