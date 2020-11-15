@@ -15,10 +15,7 @@
       (is (= (:instanceCount good-conf) 2))
       (is (= (:bidPct good-conf) 50))
       (is (= (:serviceRole good-conf) "emr-default-role"))
-      (is (= (:instanceRole good-conf) "emr-default-instance-role"))
-      (is (= (:region good-conf) "us-east-1"))
-      (is (= (:tags good-conf) [{:Key "Testkey1" :Value "TestValue1"}
-                                {:Key "Testkey2" :Value "TestValue2"}])))))
+      (is (= (:instanceProfile good-conf) "emr-default-instance-role")))))
 
 (deftest bad-conf-consumption
   (testing "bad conf validation"

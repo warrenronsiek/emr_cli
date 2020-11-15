@@ -24,6 +24,7 @@
     <orderEntry type="library" name="Leiningen: com.cognitect.aws/s3:809.2.734.0" level="project" />
     <orderEntry type="library" name="Leiningen: com.cognitect.aws/sts:798.2.678.0" level="project" />
     <orderEntry type="library" name="Leiningen: com.cognitect/http-client:0.1.104" level="project" />
+    <orderEntry type="library" name="Leiningen: duratom:0.5.3" level="project" />
     <orderEntry type="library" name="Leiningen: expound:0.8.4" level="project" />
     <orderEntry type="library" name="Leiningen: me.raynes/fs:1.4.6" level="project" />
     <orderEntry type="library" name="Leiningen: nrepl:0.6.0" level="project" />

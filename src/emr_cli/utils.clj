@@ -54,7 +54,7 @@
 (defn client-builder
   [config service & [region-override]]
   (let [service (keyword (if (= service "emr") "elasticmapreduce" service))
-        region (keyword (or region-override (:region config)))]
+        region (keyword (or region-override (:region config) :us-east-1))]
     (if (:callerRole config)
       (let [credentials (aws/invoke
                           (aws/client {:api :sts :region region})

@@ -1,6 +1,7 @@
 (ns emr-cli.emr
   (:require [cognitect.aws.client.api :as aws]
             [emr-cli.utils :as utils]
+            [emr-cli.state :refer [add-cluster remove-cluster]]
             [clojure.core :refer [<= >= < >]]
             [clojure.java.io :as io]
             [clj-yaml.core :as yaml]
@@ -111,7 +112,7 @@
                               [{:Name            "copy jar"
                                 :ActionOnFailure "TERMINATE_CLUSTER"
                                 :HadoopJarStep   {:Jar  "command-runner.jar"
-                                                  :Args ["aws", "s3", "cp", (:jar config), jarName]}}
+                                                  :Args ["aws" "s3" "cp" (:jar config) jarName]}}
                                {:Name            "run jar"
                                 :ActionOnFailure "TERMINATE_CLUSTER"
                                 :HadoopJarStep   {:Jar  "command-runner.jar"
@@ -123,7 +124,13 @@
                                                           jarName
                                                           (map second (:jarArgs config)))}}])))}))
 
-
 (defn create-cluster [conf]
-  (let [emr (utils/client-builder conf "emr")]
-    (aws/invoke emr {:op :RunJobFlow :request (create-request conf)})))
+  (let [emr (utils/client-builder conf "emr")
+        resp (aws/invoke emr {:op :RunJobFlow :request (create-request conf)})]
+    (add-cluster {:cluster-name (:clusterName conf) :cluster-id (:JobFlowId resp) :pem-key (:pemKey conf)})))
+
+(defn terminate-clusters
+  [conf cluster-ids region]
+  (let [emr (if conf (utils/client-builder conf "emr")
+                     (utils/client-builder {:region region} "emr"))]
+    (aws/invoke emr {:op :TerminateJobFlows :request {:JobFlowIds cluster-ids}})))
