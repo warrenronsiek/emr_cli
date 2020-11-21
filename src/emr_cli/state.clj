@@ -10,4 +10,10 @@
   (swap! emr-state (filter (fn [[k v]] (not (or (= (keyword identifier) k)
                                                 (= (:name v) identifier)))))))
 
-(defn print-clusters [] (map (fn [[k v]] (println (:name v) k (:region v))) @emr-state))
+(defn print-clusters [] (doseq [[k v] (seq @emr-state)] (println (:name v) k (:region v))))
+
+(defn get-cluster-ids [name] (map
+                               (fn [[k v]] (str (symbol k)) )
+                               (filter
+                                 (fn [[k v]] (= (:name v) name))
+                                 @emr-state)))

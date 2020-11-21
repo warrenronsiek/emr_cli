@@ -14,7 +14,8 @@
                  [com.cognitect.aws/elasticmapreduce "801.2.704.0"]
                  [com.cognitect.aws/sts "798.2.678.0"]
                  [com.cognitect.aws/pricing "770.2.568.0"]
-                 [duratom "0.5.3"]]
+                 [duratom "0.5.3"]
+                 [clj-ssh "0.5.14"]]
   :repl-options {:init-ns emr-cli.core}
   :uberjar-name "emr_cli.jar"
   :main emr_cli.core

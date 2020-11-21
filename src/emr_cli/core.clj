@@ -5,8 +5,10 @@
             [emr-cli.state :refer [print-clusters]])
   (:gen-class))
 
-(defn !null= [a b] (and (= a b) (not (nil? (and a b)))))
+(defn ^:private !null= [a b] (and (= a b) (not (nil? (and a b)))))
+
 (defn create-cluster-shim [{:keys [conf]}] (create-cluster (parse-conf conf)))
+
 (defn terminate-cluster-shim [{:keys [conf name id region]}]
   (let [clusters (filter (fn [[k v]] (or (!null= k id)
                                          (!null= (:name v) name)

@@ -15,6 +15,7 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="Leiningen: cli-matic:0.4.3" level="project" />
     <orderEntry type="library" name="Leiningen: clj-commons/clj-yaml:0.7.1" level="project" />
+    <orderEntry type="library" name="Leiningen: clj-ssh:0.5.14" level="project" />
     <orderEntry type="library" name="Leiningen: clojure-complete:0.2.5" level="project" />
     <orderEntry type="library" name="Leiningen: com.cognitect.aws/api:0.8.474" level="project" />
     <orderEntry type="library" name="Leiningen: com.cognitect.aws/ec2:809.2.734.0" level="project" />
@@ -24,9 +25,18 @@
     <orderEntry type="library" name="Leiningen: com.cognitect.aws/s3:809.2.734.0" level="project" />
     <orderEntry type="library" name="Leiningen: com.cognitect.aws/sts:798.2.678.0" level="project" />
     <orderEntry type="library" name="Leiningen: com.cognitect/http-client:0.1.104" level="project" />
+    <orderEntry type="library" name="Leiningen: com.jcraft/jsch.agentproxy.core:0.0.9" level="project" />
+    <orderEntry type="library" name="Leiningen: com.jcraft/jsch.agentproxy.jsch:0.0.9" level="project" />
+    <orderEntry type="library" name="Leiningen: com.jcraft/jsch.agentproxy.pageant:0.0.9" level="project" />
+    <orderEntry type="library" name="Leiningen: com.jcraft/jsch.agentproxy.sshagent:0.0.9" level="project" />
+    <orderEntry type="library" name="Leiningen: com.jcraft/jsch.agentproxy.usocket-jna:0.0.9" level="project" />
+    <orderEntry type="library" name="Leiningen: com.jcraft/jsch.agentproxy.usocket-nc:0.0.9" level="project" />
+    <orderEntry type="library" name="Leiningen: com.jcraft/jsch:0.1.53" level="project" />
     <orderEntry type="library" name="Leiningen: duratom:0.5.3" level="project" />
     <orderEntry type="library" name="Leiningen: expound:0.8.4" level="project" />
     <orderEntry type="library" name="Leiningen: me.raynes/fs:1.4.6" level="project" />
+    <orderEntry type="library" name="Leiningen: net.java.dev.jna/jna-platform:4.1.0" level="project" />
+    <orderEntry type="library" name="Leiningen: net.java.dev.jna/jna:4.1.0" level="project" />
     <orderEntry type="library" name="Leiningen: nrepl:0.6.0" level="project" />
     <orderEntry type="library" name="Leiningen: org.apache.commons/commons-compress:1.8" level="project" />
     <orderEntry type="library" name="Leiningen: org.clojure/clojure:1.10.1" level="project" />
