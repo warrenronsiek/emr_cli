@@ -2,7 +2,7 @@
   (:require [cognitect.aws.client.api :as aws]
             [emr-cli.utils :as utils]
             [clojure.core.async :refer [thread]]
-            [clj-ssh.ssh :refer [ssh-agent session forward-remote-port]]
+    ; [clj-ssh.ssh :refer [ssh-agent session forward-remote-port]]
             [emr-cli.state :refer [add-cluster remove-cluster get-cluster-ids]]
             [clojure.core :refer [<= >= < >]]
             [clojure.java.io :as io]
@@ -91,19 +91,27 @@
                                                                              :InstanceType  (:instanceType config)
                                                                              :InstanceCount (:instanceCount config)
                                                                              :Market        "ON_DEMAND"})]}
-     :Configurations    [{:Classification "spark-defaults"
-                          :Properties     {:spark.driver.memory           (:executor-memory params)
-                                           :spark.driver.cores            (:executor-cores params)
-                                           :spark.executor.memory         (:executor-memory params)
-                                           :spark.executor.instances      (:executor-instances params)
-                                           :spark.executor.cores          (:executor-cores params)
-                                           :spark.sql.shuffle.partitions  (:shuffle-partitions params)
-                                           :spark.executor.memoryOverhead (:yarn-memory-overhead params)}}
-                         {:Classification "yarn-site"
-                          :Properties     {:yarn.nodemanager.resource.memory-mb  (:yarn-allocateable-memory-per-node params)
-                                           :yarn.nodemanager.resource.cpu-vcores (:yarn-allocateable-cores-per-node params)}}
-                         {:Classification "capacity-scheduler"
-                          :Properties     {:yarn.scheduler.capacity.resource-calculator "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"}}]
+     :Configurations    (flat-conj
+                          [{:Classification "spark-defaults"
+                            :Properties     {:spark.driver.memory           (:executor-memory params)
+                                             :spark.driver.cores            (:executor-cores params)
+                                             :spark.executor.memory         (:executor-memory params)
+                                             :spark.executor.instances      (:executor-instances params)
+                                             :spark.executor.cores          (:executor-cores params)
+                                             :spark.sql.shuffle.partitions  (:shuffle-partitions params)
+                                             :spark.executor.memoryOverhead (:yarn-memory-overhead params)}}
+                           {:Classification "yarn-site"
+                            :Properties     {:yarn.nodemanager.resource.memory-mb  (:yarn-allocateable-memory-per-node params)
+                                             :yarn.nodemanager.resource.cpu-vcores (:yarn-allocateable-cores-per-node params)}}
+                           {:Classification "capacity-scheduler"
+                            :Properties     {:yarn.scheduler.capacity.resource-calculator "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"}}
+                           (if (:configurations config)
+                             (map (fn [conf] {:Classification (:classification conf)
+                                              :Properties (map (fn [propertyMap] {(keyword (:key propertyMap))
+                                                                                  (:value propertyMap)})
+                                                               (:properties conf))})
+                                  (:configurations config)))
+                           ])
      :Steps             (flat-conj
                           {:Name            "setup hadoop debugging"
                            :ActionOnFailure "TERMINATE_CLUSTER"
@@ -137,18 +145,18 @@
                      (utils/client-builder {:region region} "emr"))]
     (aws/invoke emr {:op :TerminateJobFlows :request {:JobFlowIds cluster-ids}})))
 
-(defn ssh-tunnel [conf cluster-id region]
-  (let [app-port-map {:Zeppelin 8890 :Spark 18080 :Yarn 8088}
-        emr (utils/client-builder conf "emr")
-        cluster-description (aws/invoke emr
-                                        {:op      :DescribeCluster
-                                         :request {:ClusterId (or cluster-id (get-cluster-ids (:clusterName conf)))}})
-        master-dns (:MasterPublicDnsName (:Cluster cluster-description))
-        apps (map :Name (:Applications (:Cluster cluster-description)))]
-    (doseq [app apps]
-      (let [app-port ((keyword app) app-port-map)]
-        (thread (forward-remote-port (session (ssh-agent {}) master-dns {:username "ec2-user"
-                                                                         :identity_file (:pemKey conf)})
-                                     app-port
-                                     app-port))
-        (println (str "serving " app " on port " app-port))))))
+;(defn ssh-tunnel [conf cluster-id region]
+;  (let [app-port-map {:Zeppelin 8890 :Spark 18080 :Yarn 8088}
+;        emr (utils/client-builder conf "emr")
+;        cluster-description (aws/invoke emr
+;                                        {:op      :DescribeCluster
+;                                         :request {:ClusterId (or cluster-id (get-cluster-ids (:clusterName conf)))}})
+;        master-dns (:MasterPublicDnsName (:Cluster cluster-description))
+;        apps (map :Name (:Applications (:Cluster cluster-description)))]
+;    (doseq [app apps]
+;      (let [app-port ((keyword app) app-port-map)]
+;        (thread (forward-remote-port (session (ssh-agent {}) master-dns {:username      "ec2-user"
+;                                                                         :identity_file (:pemKey conf)})
+;                                     app-port
+;                                     app-port))
+;        (println (str "serving " app " on port " app-port))))))

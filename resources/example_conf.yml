@@ -7,6 +7,17 @@ instanceCount: 2
 bidPct: 50
 serviceRole: emr-default-role
 instanceProfile: emr-default-instance-role
+configurations:
+  - classification: emrfs-site
+    properties:
+      - key: fs.s3.authorization.roleMapping
+        value: my-other-iam-role
+  - classification: some-other-class
+    properties:
+      - key: mykey
+        value: myvalue
+      - key: somekey
+        value: somevalue
 tags:
   - Key: Application Type
     Value: fizzbuzz

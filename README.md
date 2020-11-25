@@ -14,15 +14,16 @@ A command line utility for spinning up a EMR clusters from config files.
 * instanceType: duh
 * pemKey: the name of the key used in the cluster. Do not inclued the `.pem` extension
 * instanceCount: quantity of instances
-* emrVersion: duh. defaults to 6.1.0
-* bidPct: percent of max price that you want to pay
-* jar: s3 path of the jar you want to run (optional)
-* jarClass: the entrypoint class of your jar (optional)
-* jarArgs: arguments for the jar (optional)
 * serviceRole: the name of the role EMR service assumes to create the cluster (typically EMR_DefaultRole)
 * instanceProfile: the ARN of the IAM profile that you want the cluster instances to use 
-* callerRole: if you need to assume a role to create the cluster pass the ARN here (optional) 
-* tags: any tags you want to apply
+* emrVersion: (optional) defaults to 6.1.0
+* bidPct: (optional) percent of max price that you want to pay. Defaults to on-demand.
+* jar: (optional) s3 path of the jar you want to run 
+* jarClass: (optional) the entrypoint class of your jar 
+* jarArgs: (optional) arguments for the jar 
+* callerRole: (optional)  if you need to assume a role to create the cluster pass the ARN here 
+* tags: (optional) any tags you want to apply
+* configurations: (optional) a map of any configuration params you want to apply to the cluster
 
 ## Example configurations:
 
@@ -45,6 +46,17 @@ jarArgs:
   - "2020-10-28"
 instanceProfile: instance-profile
 callerRole: arn:aws:iam::1234567890:role/role-to-assume
+configurations:
+  - classification: some-class
+    properties: 
+      - key: akey
+        value: avalue
+  - classification: some-other-class
+    properties:
+      - key: mykey
+        value: myvalue
+      - key: somekey
+        value: somevalue
 tags:
   - Key: Application Type
     Value: fizzbuzz

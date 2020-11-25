@@ -23,14 +23,20 @@
              [::callerRole [string?]]
              [::jar [string?]]
              [::emrVersion [string?]]
+             [::classification [string?]]
+             [::key [string?]]
+             [::value [string?]]
              [::jarClass [string?]]])
+  (s/def ::properties (s/coll-of (s/keys :req-un [::key ::value])))
+  (s/def ::configurations (s/coll-of (s/keys :req-un [::classification ::properties])))
   (s/def ::jarArg (s/or :s string? :i int? :d double?))
   (s/def ::jarArgs (s/coll-of ::jarArg))
   (s/def ::tag (s/keys :Name :Value))
   (s/def ::tags (s/coll-of ::tag))
   (s/def ::config (s/keys :req-un [::clusterName ::logUri ::instanceType ::pemKey ::instanceCount
                                    ::instanceProfile ::serviceRole]
-                          :opt-un [::tags ::callerRole ::jar ::jarClass ::jarArgs ::bidPct ::emrVersion]))
+                          :opt-un [::tags ::callerRole ::jar ::jarClass ::jarArgs ::bidPct ::emrVersion
+                                   ::configurations]))
   (if (not (s/valid? ::config conf)) (s/explain ::config conf))
   (if (:jarClass conf) (assert (:jar conf)))
   (if (:jarArgs conf) (assert (:jar conf)))

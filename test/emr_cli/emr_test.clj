@@ -16,11 +16,11 @@
       (is (= (:yarn-allocateable-cores-per-node params) "15")))))
 
 
-(deftest price-calculation-test
-  (testing "price calculation"
-    (is (instance? String (calculate-bid-price {:instanceType "m4.4xlarge" :subnet "subnet-0b087578ef9f3da24" :bidPct 50})))
-    (is (instance? Float (Float/parseFloat (calculate-bid-price {:instanceType "m4.4xlarge" :subnet "subnet-0b087578ef9f3da24" :bidPct 50}))))
-    (is (<= 0.1 (Float/parseFloat (calculate-bid-price {:instanceType "m4.4xlarge" :subnet "subnet-0b087578ef9f3da24" :bidPct 50})) 1.0))))
+;(deftest price-calculation-test
+;  (testing "price calculation"
+;    (is (instance? String (calculate-bid-price {:instanceType "m4.4xlarge" :subnet "subnet-0b087578ef9f3da24" :bidPct 50})))
+;    (is (instance? Float (Float/parseFloat (calculate-bid-price {:instanceType "m4.4xlarge" :subnet "subnet-0b087578ef9f3da24" :bidPct 50}))))
+;    (is (<= 0.1 (Float/parseFloat (calculate-bid-price {:instanceType "m4.4xlarge" :subnet "subnet-0b087578ef9f3da24" :bidPct 50})) 1.0))))
 
 (deftest create-request-test
   (let [params (parse-conf (slurp (io/resource "example_conf.yml")))
@@ -70,7 +70,10 @@
       (is (= (:spark.sql.shuffle.partitions spark-defaults) (:shuffle-partitions emr-params)))
       (is (= (:spark.executor.memoryOverhead spark-defaults) (:yarn-memory-overhead emr-params)))
       (is (= (:yarn.nodemanager.resource.memory-mb yarn-site) (:yarn-allocateable-memory-per-node emr-params)))
-      (is (= (:yarn.nodemanager.resource.cpu-vcores yarn-site) (:yarn-allocateable-cores-per-node emr-params))))))
+      (is (= (:yarn.nodemanager.resource.cpu-vcores yarn-site) (:yarn-allocateable-cores-per-node emr-params)))
+      (is (= (first (filter (fn [classification] (= (:Classification classification) "emrfs-site")) config))
+             {:Classification "emrfs-site"
+              :Properties     {:fs.s3.authorization.roleMapping "my-other-iam-role"}})))))
 
 (deftest on-demand-request
   (testing "worker group on demand"

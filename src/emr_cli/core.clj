@@ -9,6 +9,8 @@
 
 (defn create-cluster-shim [{:keys [conf]}] (create-cluster (parse-conf conf)))
 
+(defn print-clusters-shim [{:keys [state]}] (print-clusters state))
+
 (defn terminate-cluster-shim [{:keys [conf name id region]}]
   (let [clusters (filter (fn [[k v]] (or (!null= k id)
                                          (!null= (:name v) name)
@@ -29,8 +31,8 @@
                  {:command     "list-clusters"
                   :short       "ls"
                   :description ["lists all created clusters"]
-                  :opts        []
-                  :runs        print-clusters}
+                  :opts        [{:option "state" :short "s" :type :string :default "running"}]
+                  :runs        print-clusters-shim}
                  {:command     "terminate-cluster"
                   :short       "t"
                   :description ["deletes a cluster"]
