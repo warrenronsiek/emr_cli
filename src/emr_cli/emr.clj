@@ -107,9 +107,10 @@
                             :Properties     {:yarn.scheduler.capacity.resource-calculator "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"}}
                            (if (:configurations config)
                              (map (fn [conf] {:Classification (:classification conf)
-                                              :Properties (map (fn [propertyMap] {(keyword (:key propertyMap))
-                                                                                  (:value propertyMap)})
-                                                               (:properties conf))})
+                                              :Properties     (reduce
+                                                                #(assoc %1 (keyword (:key %2)) (:value %2))
+                                                                {}
+                                                                (:properties conf))})
                                   (:configurations config)))
                            ])
      :Steps             (flat-conj

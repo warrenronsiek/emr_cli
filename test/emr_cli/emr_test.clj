@@ -16,11 +16,12 @@
       (is (= (:yarn-allocateable-cores-per-node params) "15")))))
 
 
-;(deftest price-calculation-test
-;  (testing "price calculation"
-;    (is (instance? String (calculate-bid-price {:instanceType "m4.4xlarge" :subnet "subnet-0b087578ef9f3da24" :bidPct 50})))
-;    (is (instance? Float (Float/parseFloat (calculate-bid-price {:instanceType "m4.4xlarge" :subnet "subnet-0b087578ef9f3da24" :bidPct 50}))))
-;    (is (<= 0.1 (Float/parseFloat (calculate-bid-price {:instanceType "m4.4xlarge" :subnet "subnet-0b087578ef9f3da24" :bidPct 50})) 1.0))))
+(deftest price-calculation-test
+  (testing "price calculation"
+    (let [params (parse-conf (slurp (io/resource "example_conf.yml")))]
+      (is (instance? String (calculate-bid-price params)))
+      (is (instance? Float (Float/parseFloat (calculate-bid-price params))))
+      (is (<= 0.1 (Float/parseFloat (calculate-bid-price params)) 1.0)))))
 
 (deftest create-request-test
   (let [params (parse-conf (slurp (io/resource "example_conf.yml")))

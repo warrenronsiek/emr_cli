@@ -79,7 +79,9 @@
   (let [client (client-builder config "ec2")
         subnet (aws/invoke client {:op :DescribeSubnets :request {:SubnetIds [(:subnet config)]}})
         sub-region (-> subnet :Subnets first :AvailabilityZone)]
-    (str/join (drop-last 1 sub-region))))
+    (if (some? (-> subnet :Response :Errors :Error :Code))
+      (throw (Exception. (str (-> subnet :Response :Errors :Error :Message))))
+      (str/join (drop-last 1 sub-region)))))
 
 (def ec2-info
   {:m4.4xlarge    {:memory 64.0 :cores 16}
