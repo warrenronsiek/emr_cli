@@ -103,8 +103,8 @@
                                              :spark.executor.memory         (:executor-memory params)
                                              :spark.executor.instances      (:executor-instances params)
                                              :spark.executor.cores          (:executor-cores params)
-                                             :spark.sql.shuffle.partitions  (or (:shufflePartitions config)
-                                                                                (:shuffle-partitions params))
+                                             :spark.sql.shuffle.partitions  (str (or (:shufflePartitions config)
+                                                                                     (:shuffle-partitions params)))
                                              :spark.executor.memoryOverhead (:yarn-memory-overhead params)}}
                            {:Classification "yarn-site"
                             :Properties     {:yarn.nodemanager.resource.memory-mb  (:yarn-allocateable-memory-per-node params)
