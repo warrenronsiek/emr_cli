@@ -23,6 +23,7 @@
              [::callerRole [string?]]
              [::jar [string?]]
              [::additionalSecurityGroups [string?]]
+             [::shufflePartitions [integer?]]
              [::emrVersion [string?]]
              [::classification [string?]]
              [::key [string?]]
@@ -37,7 +38,7 @@
   (s/def ::config (s/keys :req-un [::clusterName ::logUri ::instanceType ::pemKey ::instanceCount
                                    ::instanceProfile ::serviceRole]
                           :opt-un [::tags ::callerRole ::jar ::jarClass ::jarArgs ::bidPct ::emrVersion
-                                   ::configurations]))
+                                   ::configurations ::shufflePartitions]))
   (if (not (s/valid? ::config conf)) (s/explain ::config conf))
   (if (:jarClass conf) (assert (:jar conf)))
   (if (:jarArgs conf) (assert (:jar conf)))

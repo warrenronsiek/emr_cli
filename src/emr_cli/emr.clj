@@ -30,8 +30,6 @@
   ; I am doing a variant of what is specified in some spark books/talks, but you can find something similar in:
   ; https://aws.amazon.com/blogs/big-data/best-practices-for-successfully-managing-memory-for-apache-spark-applications-on-amazon-emr/
   (let [memory-overhead-multiplier 0.9                      ; multiplier is to give the os/system memory
-        _ (debug (keyword instance-type))
-        _ (debug ((keyword instance-type) utils/ec2-info))
         instance ((keyword instance-type) utils/ec2-info)
         allocateable-cores-per-node (- (:cores instance) 1) ; -1 for the yarn nodemanager that has to run on each node
         total-nodes worker-count
@@ -105,7 +103,8 @@
                                              :spark.executor.memory         (:executor-memory params)
                                              :spark.executor.instances      (:executor-instances params)
                                              :spark.executor.cores          (:executor-cores params)
-                                             :spark.sql.shuffle.partitions  (:shuffle-partitions params)
+                                             :spark.sql.shuffle.partitions  (or (:shufflePartitions config)
+                                                                                (:shuffle-partitions params))
                                              :spark.executor.memoryOverhead (:yarn-memory-overhead params)}}
                            {:Classification "yarn-site"
                             :Properties     {:yarn.nodemanager.resource.memory-mb  (:yarn-allocateable-memory-per-node params)
