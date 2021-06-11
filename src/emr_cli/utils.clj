@@ -22,6 +22,7 @@
              [::serviceRole [string?]]
              [::callerRole [string?]]
              [::jar [string?]]
+             [::additionalSecurityGroups [string?]]
              [::emrVersion [string?]]
              [::classification [string?]]
              [::key [string?]]

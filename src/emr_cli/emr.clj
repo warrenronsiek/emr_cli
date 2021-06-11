@@ -4,6 +4,7 @@
             [clojure.core.async :refer [thread]]
     ; [clj-ssh.ssh :refer [ssh-agent session forward-remote-port]]
             [emr-cli.state :refer [add-cluster remove-cluster get-cluster-ids]]
+            [taoensso.timbre :as timbre :refer [info debug]]
             [clojure.core :refer [<= >= < >]]
             [clojure.java.io :as io]
             [clj-yaml.core :as yaml]
@@ -29,6 +30,8 @@
   ; I am doing a variant of what is specified in some spark books/talks, but you can find something similar in:
   ; https://aws.amazon.com/blogs/big-data/best-practices-for-successfully-managing-memory-for-apache-spark-applications-on-amazon-emr/
   (let [memory-overhead-multiplier 0.9                      ; multiplier is to give the os/system memory
+        _ (debug (keyword instance-type))
+        _ (debug ((keyword instance-type) utils/ec2-info))
         instance ((keyword instance-type) utils/ec2-info)
         allocateable-cores-per-node (- (:cores instance) 1) ; -1 for the yarn nodemanager that has to run on each node
         total-nodes worker-count
@@ -65,32 +68,36 @@
   (let [params (calculate-emr-params (:instanceType config) (:instanceCount config))]
     {:Name              (:clusterName config)
      :LogUri            (:logUri config)
-     :ReleaseLabel      (:emrVersion config "emr-6.1.0")
+     :ReleaseLabel      (str "emr-" (or (:emrVersion config) "6.3.0"))
      :VisibleToAllUsers true
      :JobFlowRole       (:instanceProfile config)
      :ServiceRole       (:serviceRole config)
      :Applications      [{:Name "Spark"} {:Name "Hadoop"} {:Name "Hive"} {:Name "Zeppelin"}]
      :Tags              (:tags config)
-     :Instances         {:Ec2SubnetId                 (:subnet config)
-                         :Ec2KeyName                  (:pemKey config)
-                         :KeepJobFlowAliveWhenNoSteps (not (some? (:jar config)))
-                         :TerminationProtected        false
-                         :InstanceGroups              [{:Name          "master"
-                                                        :InstanceRole  "MASTER"
-                                                        :Market        "ON_DEMAND"
-                                                        :InstanceType  (:instanceType config)
-                                                        :InstanceCount 1}
-                                                       (if (:bidPct config) {:Name          "worker"
-                                                                             :InstanceRole  "CORE"
-                                                                             :Market        "SPOT"
-                                                                             :InstanceType  (:instanceType config)
-                                                                             :InstanceCount (:instanceCount config)
-                                                                             :BidPrice      (calculate-bid-price config)}
-                                                                            {:Name          "worker"
-                                                                             :InstanceRole  "CORE"
-                                                                             :InstanceType  (:instanceType config)
-                                                                             :InstanceCount (:instanceCount config)
-                                                                             :Market        "ON_DEMAND"})]}
+     :Instances         (merge
+                          {:Ec2SubnetId                 (:subnet config)
+                           :Ec2KeyName                  (:pemKey config)
+                           :KeepJobFlowAliveWhenNoSteps (not (some? (:jar config)))
+                           :TerminationProtected        false
+                           :InstanceGroups              [{:Name          "master"
+                                                          :InstanceRole  "MASTER"
+                                                          :Market        "ON_DEMAND"
+                                                          :InstanceType  (:instanceType config)
+                                                          :InstanceCount 1}
+                                                         (if (:bidPct config) {:Name          "worker"
+                                                                               :InstanceRole  "CORE"
+                                                                               :Market        "SPOT"
+                                                                               :InstanceType  (:instanceType config)
+                                                                               :InstanceCount (:instanceCount config)
+                                                                               :BidPrice      (calculate-bid-price config)}
+                                                                              {:Name          "worker"
+                                                                               :InstanceRole  "CORE"
+                                                                               :InstanceType  (:instanceType config)
+                                                                               :InstanceCount (:instanceCount config)
+                                                                               :Market        "ON_DEMAND"})]}
+                          (when-let [sec-groups (:additionalSecurityGroups config)]
+                            {:AdditionalMasterSecurityGroups (flatten [sec-groups])
+                             :AdditionalSlaveSecurityGroups  (flatten [sec-groups])}))
      :Configurations    (flat-conj
                           [{:Classification "spark-defaults"
                             :Properties     {:spark.driver.memory           (:executor-memory params)
@@ -137,8 +144,12 @@
 
 (defn create-cluster [conf]
   (let [emr (utils/client-builder conf "emr")
-        resp (aws/invoke emr {:op :RunJobFlow :request (create-request conf)})]
-    (add-cluster {:cluster-name (:clusterName conf) :cluster-id (:JobFlowId resp) :pem-key (:pemKey conf)})))
+        request (create-request conf)
+        resp (aws/invoke emr {:op :RunJobFlow :request request})]
+    (do
+      (add-cluster {:cluster-name (:clusterName conf) :cluster-id (:JobFlowId resp) :pem-key (:pemKey conf)})
+      (timbre/info request)
+      (timbre/info resp))))
 
 (defn terminate-clusters
   [conf cluster-ids region]
