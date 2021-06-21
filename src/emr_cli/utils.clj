@@ -4,6 +4,7 @@
             [clojure.spec.alpha :as s]
             [cognitect.aws.credentials :as credentials]
             [clojure.string :as str]
+            [taoensso.timbre :refer [info]]
             [clojure.java.io :as io]))
 
 (defmacro ^:private and-spec [defs]
@@ -38,7 +39,7 @@
   (s/def ::config (s/keys :req-un [::clusterName ::logUri ::instanceType ::pemKey ::instanceCount
                                    ::instanceProfile ::serviceRole]
                           :opt-un [::tags ::callerRole ::jar ::jarClass ::jarArgs ::bidPct ::emrVersion
-                                   ::configurations ::shufflePartitions]))
+                                   ::configurations ::shufflePartitions ::additionalSecurityGroups]))
   (if (not (s/valid? ::config conf)) (s/explain ::config conf))
   (if (:jarClass conf) (assert (:jar conf)))
   (if (:jarArgs conf) (assert (:jar conf)))
@@ -169,3 +170,59 @@
    :d2.xlarge     {:memory 30.5 :cores 4}
    :d2.8xlarge    {:memory 244.0 :cores 36}
    :d2.2xlarge    {:memory 61.0 :cores 8}})
+
+(defn log-filter [lines]
+  (filter #(and (not (str/includes? % "BlockManagerInfo"))
+                (not (str/includes? % "BlockManagerMasterEndpoint"))
+                (not (str/includes? % "SharedState"))
+                (not (str/includes? % "ServerInfo"))
+                (not (str/includes? % "ContextHandler"))
+                (not (str/includes? % "ExecutorMonitor"))
+                (not (str/includes? % "YarnSchedulerBackend"))
+                (not (str/includes? % "TaskSetManager"))
+                (not (str/includes? % "YarnClusterScheduler"))
+                (not (str/includes? % "DAGScheduler"))
+                (not (str/includes? % "ApplicationMaster"))
+                (not (str/includes? % "EmrOptimizedParquetOutputCommitter"))
+                (not (str/includes? % "MemoryStore"))
+                (not (str/includes? % "MapOutputTrackerMasterEndpoint"))
+                (not (str/includes? % "TypeUtil"))
+                (not (str/includes? % "SQLHadoopMapReduceCommitProtocol"))
+                (not (str/includes? % "MapOutputTrackerMasterEndpoint"))
+                (not (str/includes? % "MultipartUploadOutputStream"))
+                (not (str/includes? % "SQLHadoopMapReduceCommitProtocol"))
+                (not (str/includes? % "YarnAllocator"))
+                (not (str/includes? % "ExecutorAllocationManager"))
+                (not (str/includes? % "CodeGenerator"))
+                (not (str/includes? % "YarnAllocator"))
+                (not (str/includes? % "FileSourceStrategy"))
+                (not (str/includes? % "ClientConfigurationFactory"))
+                (not (str/includes? % "SparkContext"))
+                (not (str/includes? % "YarnAllocator"))
+                (not (str/includes? % "CacheManager"))
+                (not (str/includes? % "InMemoryFileIndex"))
+                (not (str/includes? % "FileSourceScanExec"))
+                (not (str/includes? % "ParquetFileFormat"))
+                (not (str/includes? % "ContextCleaner"))
+                (not (str/includes? % "Manager"))
+                (not (str/includes? % "ApplicationMaster"))
+                (not (str/includes? % "AdaptiveSparkPlanExec"))
+                (not (str/includes? % "FileOutputCommitter")))
+          lines))
+
+(defn get-emr-logs [cluster-id conf]
+  (let [s3-client (client-builder conf "s3")
+        uri-components (str/split (str/join "/" [(str/join (drop 5 (:logUri conf))) cluster-id]) #"/")
+        bucket (first uri-components)
+        prefix (str/join "/" (rest uri-components))
+        container-logs (aws/invoke s3-client {:op :ListObjectsV2 :request {:Bucket bucket
+                                                                           :Prefix prefix}})
+        stderr-files (filter #(str/ends-with? % "stderr.gz") (map :Key (:Contents container-logs)))
+        driver-logs (filter #(str/includes? % "000001") stderr-files)
+        _ (doseq [l driver-logs] (info "found logs at" l))
+        get (aws/invoke s3-client {:op :GetObject :request {:Bucket bucket
+                                                            :Key    (first driver-logs)}})
+        _ (io/delete-file "/tmp/stderr")
+        _ (io/copy (:Body get) (io/file "/tmp/stderr"))
+        logs (log-filter (str/split (slurp "/tmp/stderr") #"\n"))]
+    (doseq [line logs] (println line))))

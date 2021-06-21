@@ -6,6 +6,7 @@ A command line utility for spinning up a EMR clusters from config files.
 
 ## Usage
 * create cluster `java -jar emr_cli.jar create-cluster --conf my_conf.yml`
+* get cluster logs `java -jar emr_cli.jar get-logs --conf my_conf.yml --cluster-id <a cluster id>`
 
 ## Configuration fields
 * clusterName: the name of the cluster
@@ -15,8 +16,10 @@ A command line utility for spinning up a EMR clusters from config files.
 * pemKey: the name of the key used in the cluster. Do not inclued the `.pem` extension
 * instanceCount: quantity of instances
 * serviceRole: the name of the role EMR service assumes to create the cluster (typically EMR_DefaultRole)
-* instanceProfile: the ARN of the IAM profile that you want the cluster instances to use 
-* emrVersion: (optional) defaults to 6.1.0
+* instanceProfile: the ARN of the IAM profile that you want the cluster instances to use
+* additionalSecurityGroups: (optional) additional security groups to apply to master/worker nodes
+* shufflePartitions: (optional) duh
+* emrVersion: (optional) defaults to 6.3.0
 * bidPct: (optional) percent of max price that you want to pay. Defaults to on-demand.
 * jar: (optional) s3 path of the jar you want to run 
 * jarClass: (optional) the entrypoint class of your jar 

@@ -1,7 +1,7 @@
 (ns emr_cli.core
   (:require [cli-matic.core :refer [run-cmd]]
             [emr-cli.emr :refer [create-cluster terminate-clusters]]
-            [emr-cli.utils :refer [parse-conf]]
+            [emr-cli.utils :refer [parse-conf get-emr-logs]]
             [emr-cli.state :refer [print-clusters]])
   (:gen-class))
 
@@ -10,6 +10,8 @@
 (defn create-cluster-shim [{:keys [conf]}] (create-cluster (parse-conf conf)))
 
 (defn print-clusters-shim [{:keys [state]}] (print-clusters state))
+
+(defn get-logs-shim [{:keys [conf cluster-id]}] (get-emr-logs cluster-id conf))
 
 (defn terminate-cluster-shim [{:keys [conf name id region]}]
   (let [clusters (filter (fn [[k v]] (or (!null= k id)
@@ -40,6 +42,12 @@
                                 {:option "name" :short "n" :type :string}
                                 {:option "id" :short "i" :type :string}
                                 {:option "region" :short "r" :type :string}]
-                  :runs        terminate-cluster-shim}]})
+                  :runs        terminate-cluster-shim}
+                 {:command "get-logs"
+                  :short "l"
+                  :description ["get cluster driver logs"]
+                  :opts [{:option "conf" :short "c" :type :slurp}
+                         {:option "cluster-id" :short "i" :type :string}]
+                  :runs get-logs-shim}]})
 
 (defn -main [& args] (run-cmd args CONFIGURATION))
