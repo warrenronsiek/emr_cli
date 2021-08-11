@@ -5,7 +5,8 @@
             [cognitect.aws.credentials :as credentials]
             [clojure.string :as str]
             [taoensso.timbre :refer [info]]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io])
+  (:import (java.io IOException)))
 
 (defmacro ^:private and-spec [defs]
   `(do ~@(map (fn [[name rest]] `(s/def ~name (s/and ~@rest))) defs)))
@@ -220,9 +221,12 @@
         stderr-files (filter #(str/ends-with? % "stderr.gz") (map :Key (:Contents container-logs)))
         driver-logs (filter #(str/includes? % "000001") stderr-files)
         _ (doseq [l driver-logs] (info "found logs at" l))
+        _ (try (io/delete-file "/tmp/stderr")
+               (catch IOException _ "file probably doesnt exist"))
         get (aws/invoke s3-client {:op :GetObject :request {:Bucket bucket
                                                             :Key    (first driver-logs)}})
-        _ (io/delete-file "/tmp/stderr")
+        _ (println (:Body get))
+
         _ (io/copy (:Body get) (io/file "/tmp/stderr"))
         logs (log-filter (str/split (slurp "/tmp/stderr") #"\n"))]
     (doseq [line logs] (println line))))

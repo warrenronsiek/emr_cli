@@ -2,8 +2,11 @@
   (:require [cli-matic.core :refer [run-cmd]]
             [emr-cli.emr :refer [create-cluster terminate-clusters]]
             [emr-cli.utils :refer [parse-conf get-emr-logs]]
-            [emr-cli.state :refer [print-clusters]])
+            [emr-cli.state :refer [print-clusters]]
+            [taoensso.timbre :as timbre])
   (:gen-class))
+
+(timbre/refer-timbre)
 
 (defn ^:private !null= [a b] (and (= a b) (not (nil? (and a b)))))
 
@@ -18,7 +21,7 @@
                                          (!null= (:name v) name)
                                          (!null= (:clusterName conf) name)))
                          (print-clusters))
-        cluster-ids (map (fn [[k v]] k) clusters)]
+        cluster-ids (map (fn [[k _]] k) clusters)]
     (terminate-clusters conf cluster-ids region)))
 
 (def CONFIGURATION
