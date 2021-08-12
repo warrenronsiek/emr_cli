@@ -147,7 +147,6 @@
         resp (aws/invoke emr {:op :RunJobFlow :request request})]
     (do
       (add-cluster {:cluster-name (:clusterName conf) :cluster-id (:JobFlowId resp) :pem-key (:pemKey conf)})
-      (timbre/info request)
       (timbre/info resp))))
 
 (defn terminate-clusters

@@ -215,9 +215,8 @@
   (let [s3-client (client-builder conf "s3")
         uri-components (str/split (str/join "/" [(str/join (drop 5 (:logUri conf))) cluster-id]) #"/")
         bucket (first uri-components)
-        prefix (str/join "/" (rest uri-components))
-        container-logs (aws/invoke s3-client {:op :ListObjectsV2 :request {:Bucket bucket
-                                                                           :Prefix prefix}})
+        prefix (str/join "/" (filter #(not (= "" %)) (rest uri-components)))
+        container-logs (aws/invoke s3-client {:op :ListObjectsV2 :request {:Bucket bucket :Prefix prefix}})
         stderr-files (filter #(str/ends-with? % "stderr.gz") (map :Key (:Contents container-logs)))
         driver-logs (filter #(str/includes? % "000001") stderr-files)
         _ (doseq [l driver-logs] (info "found logs at" l))
@@ -225,8 +224,6 @@
                (catch IOException _ "file probably doesnt exist"))
         get (aws/invoke s3-client {:op :GetObject :request {:Bucket bucket
                                                             :Key    (first driver-logs)}})
-        _ (println (:Body get))
-
         _ (io/copy (:Body get) (io/file "/tmp/stderr"))
         logs (log-filter (str/split (slurp "/tmp/stderr") #"\n"))]
     (doseq [line logs] (println line))))
