@@ -219,7 +219,6 @@
         container-logs (aws/invoke s3-client {:op :ListObjectsV2 :request {:Bucket bucket :Prefix prefix}})
         stderr-files (filter #(str/ends-with? % "stderr.gz") (map :Key (:Contents container-logs)))
         driver-logs (filter #(str/includes? % "000001") stderr-files)
-        _ (doseq [l driver-logs] (info "found logs at" l))
         _ (try (io/delete-file "/tmp/stderr")
                (catch IOException _ "file probably doesnt exist"))
         get (aws/invoke s3-client {:op :GetObject :request {:Bucket bucket

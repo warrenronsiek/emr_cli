@@ -14,7 +14,7 @@
 
 (defn print-clusters-shim [{:keys [state]}] (print-clusters state))
 
-(defn get-logs-shim [{:keys [conf cluster-id]}] (get-emr-logs cluster-id conf))
+(defn get-logs-shim [{:keys [conf cluster-id]}] (get-emr-logs cluster-id (parse-conf conf)))
 
 (defn terminate-cluster-shim [{:keys [conf name id region]}]
   (let [clusters (filter (fn [[k v]] (or (!null= k id)
