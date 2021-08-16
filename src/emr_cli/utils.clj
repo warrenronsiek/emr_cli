@@ -6,7 +6,8 @@
             [clojure.string :as str]
             [taoensso.timbre :refer [info]]
             [clojure.java.io :as io])
-  (:import (java.io IOException)))
+  (:import (java.io IOException)
+           (java.time Duration ZoneId ZonedDateTime Instant)))
 
 (defmacro ^:private and-spec [defs]
   `(do ~@(map (fn [[name rest]] `(s/def ~name (s/and ~@rest))) defs)))
@@ -208,7 +209,11 @@
                 (not (str/includes? % "Manager"))
                 (not (str/includes? % "ApplicationMaster"))
                 (not (str/includes? % "AdaptiveSparkPlanExec"))
-                (not (str/includes? % "FileOutputCommitter")))
+                (not (str/includes? % "MapOutputTracker"))
+                (not (str/includes? % "HashAggregateExec"))
+                (not (str/includes? % "FileOutputCommitter"))
+                (not (str/includes? % "DeltaLogFileIndex"))
+                (not (str/includes? % "Snapshot")))
           lines))
 
 (defn get-emr-logs [cluster-id conf]
@@ -226,3 +231,20 @@
         _ (io/copy (:Body get) (io/file "/tmp/stderr"))
         logs (log-filter (str/split (slurp "/tmp/stderr") #"\n"))]
     (doseq [line logs] (println line))))
+
+(defn get-cluster-status [cluster-id conf]
+  (let [emr-client (client-builder conf "emr")
+        status(:Status (:Cluster (aws/invoke emr-client {:op :DescribeCluster :request {:ClusterId cluster-id}})))
+        state (:State status)
+        {start :CreationDateTime end :EndDateTime} (:Timeline status)]
+    (do
+      (println "State: " state)
+      (println "Currently: " (:Message (:StateChangeReason status)))
+      (println "Runtime: " (let [mins (case state
+                                        "RUNNING" (.toMinutes (Duration/between (.toInstant start) (Instant/now)))
+                                        "TERMINATED" (.toMinutes (Duration/between (.toInstant start) (.toInstant end)))
+                                        "TERMINATING" (.toMinutes (Duration/between (.toInstant start) (.toInstant end)))
+                                        (.toMinutes (Duration/between (.toInstant start) (Instant/now))))
+                                 hrs (int (Math/floor (/ mins 60.0)))
+                                 remaining-mins (mod mins 60)]
+                             (str hrs "hr " remaining-mins "min"))))))

@@ -1,7 +1,7 @@
 (ns emr_cli.core
   (:require [cli-matic.core :refer [run-cmd]]
             [emr-cli.emr :refer [create-cluster terminate-clusters]]
-            [emr-cli.utils :refer [parse-conf get-emr-logs]]
+            [emr-cli.utils :refer [parse-conf get-emr-logs get-cluster-status]]
             [emr-cli.state :refer [print-clusters]]
             [taoensso.timbre :as timbre])
   (:gen-class))
@@ -15,6 +15,8 @@
 (defn print-clusters-shim [{:keys [state]}] (print-clusters state))
 
 (defn get-logs-shim [{:keys [conf cluster-id]}] (get-emr-logs cluster-id (parse-conf conf)))
+
+(defn get-cluster-status-shim [{:keys [conf cluster-id]}] (get-cluster-status cluster-id (parse-conf conf)))
 
 (defn terminate-cluster-shim [{:keys [conf name id region]}]
   (let [clusters (filter (fn [[k v]] (or (!null= k id)
@@ -51,6 +53,12 @@
                   :description ["get cluster driver logs"]
                   :opts [{:option "conf" :short "c" :type :slurp}
                          {:option "cluster-id" :short "i" :type :string}]
-                  :runs get-logs-shim}]})
+                  :runs get-logs-shim}
+                 {:command "get-status"
+                  :short "s"
+                  :description ["get cluster's status"]
+                  :opts [{:option "conf" :short "c" :type :slurp}
+                         {:option "cluster-id" :short "i" :type :string}]
+                  :runs get-cluster-status-shim}]})
 
 (defn -main [& args] (run-cmd args CONFIGURATION))
