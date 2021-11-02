@@ -8,6 +8,7 @@
             [clojure.core :refer [<= >= < >]]
             [clojure.java.io :as io]
             [clj-yaml.core :as yaml]
+            [clojure.core.reducers :as r]
             [clojure.string :as str]))
 
 (defn calculate-bid-price [config]
@@ -59,7 +60,21 @@
      :yarn-allocateable-memory-per-node (str (* allocateable-memory-per-node 1024))
      :yarn-allocateable-cores-per-node  (str allocateable-cores-per-node)}))
 
-(defn ^:private flat-conj [& args] (filter some? (flatten (conj [] args))))
+(defn flat-conj [& args] (filter some? (flatten (conj [] args))))
+
+(defn merge-configs [& args]
+  (vec (r/fold
+         (r/monoid (fn [ret v] (let [{class :Classification props :Properties} v
+                                     existing-class (first (filter #(= class (:Classification %)) ret))]
+                                 (if (some? existing-class)
+                                   (conj (filter #(not= class (:Classification %)) ret)
+                                         {:Classification class
+                                          :Properties     (r/fold (r/monoid (fn [ret m] (merge ret m))
+                                                                            (constantly {}))
+                                                                  [(:Properties existing-class) props])})
+                                   (conj ret v))))
+                   (constantly []))
+         args)))
 
 (defn create-request [config]
   "tags of shape {:Key key :Value value}"
