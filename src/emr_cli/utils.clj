@@ -218,6 +218,8 @@
                 (not (str/includes? % "TorrentBroadcast"))
                 (not (str/includes? % "DelegatingLogStore"))
                 (not (str/includes? % "DefaultCachedBatchSerializer"))
+                (not (str/includes? % "YarnCoarseGrainedExecutorBackend"))
+                (not (str/includes? % "ShuffleBlockFetcherIterator"))
                 (not (str/includes? % "DeltaLog"))
                 (not (str/includes? % "Snapshot")))
           lines))
