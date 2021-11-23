@@ -4,7 +4,7 @@
             [clojure.core.async :refer [thread]]
     ; [clj-ssh.ssh :refer [ssh-agent session forward-remote-port]]
             [emr-cli.state :refer [add-cluster remove-cluster get-cluster-ids]]
-            [taoensso.timbre :as timbre :refer [info debug]]
+            [taoensso.timbre :as timbre :refer [info debug spy]]
             [clojure.core :refer [<= >= < >]]
             [clojure.java.io :as io]
             [clj-yaml.core :as yaml]

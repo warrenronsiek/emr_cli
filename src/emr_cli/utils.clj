@@ -6,7 +6,7 @@
             [clojure.string :as str]
             [taoensso.timbre :refer [info spy]]
             [clojure.java.io :as io]
-            [clojure.java.shell :only [sh]])
+            [clojure.java.shell :as shell])
   (:import (java.io IOException BufferedInputStream, BufferedReader, File)
            (java.time Duration ZoneId ZonedDateTime Instant)
            (java.util.zip GZIPInputStream)))
@@ -50,7 +50,10 @@
   (s/conform ::config conf))
 
 
-(defn parse-conf [conf] (validate-conf (yaml/parse-string conf)))
+(defn parse-conf [conf] (let [vc (validate-conf (yaml/parse-string conf))]
+                          (if (= vc :clojure.spec.alpha/invalid)
+                            (throw (Exception. "invalid configuration file"))
+                            vc)))
 
 (defn ^:private session-credentials-provider
   "need to have this weird glue thing as a consequence of the way providers are implemented"
@@ -240,7 +243,7 @@
         _ (try (io/delete-file "/tmp/stderr")
                (catch IOException _ "file probably doesnt exist"))
         _ (info "downloading logs")
-        _ (sh "aws" "s3"  "cp" (str "s3://" bucket "/" driver-logs) "/tmp/stderr")
+        _ (shell/sh "aws" "s3"  "cp" (str "s3://" bucket "/" driver-logs) "/tmp/stderr")
         _ (info "logs downloaded")]
     (with-open [rdr (clojure.java.io/reader "/tmp/stderr")]
       (doseq [line (log-filter (line-seq rdr))] (println line)))))
