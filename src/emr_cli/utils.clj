@@ -4,10 +4,12 @@
             [clojure.spec.alpha :as s]
             [cognitect.aws.credentials :as credentials]
             [clojure.string :as str]
-            [taoensso.timbre :refer [info]]
-            [clojure.java.io :as io])
-  (:import (java.io IOException)
-           (java.time Duration ZoneId ZonedDateTime Instant)))
+            [taoensso.timbre :refer [info spy]]
+            [clojure.java.io :as io]
+            [clojure.java.shell :only [sh]])
+  (:import (java.io IOException BufferedInputStream, BufferedReader, File)
+           (java.time Duration ZoneId ZonedDateTime Instant)
+           (java.util.zip GZIPInputStream)))
 
 (defmacro ^:private and-spec [defs]
   `(do ~@(map (fn [[name rest]] `(s/def ~name (s/and ~@rest))) defs)))
@@ -221,7 +223,10 @@
                 (not (str/includes? % "YarnCoarseGrainedExecutorBackend"))
                 (not (str/includes? % "ShuffleBlockFetcherIterator"))
                 (not (str/includes? % "DeltaLog"))
-                (not (str/includes? % "Snapshot")))
+                (not (str/includes? % "Snapshot"))
+                (not (str/includes? % "AsyncEventQueue"))
+                (not (str/includes? % "VacuumCommand"))
+                (not (str/includes? % "OptimisticTransaction")))
           lines))
 
 (defn get-emr-logs [cluster-id conf]
@@ -231,14 +236,14 @@
         prefix (str/join "/" (filter #(not (= "" %)) (rest uri-components)))
         container-logs (aws/invoke s3-client {:op :ListObjectsV2 :request {:Bucket bucket :Prefix prefix}})
         stderr-files (filter #(str/ends-with? % "stderr.gz") (map :Key (:Contents container-logs)))
-        driver-logs (filter #(str/includes? % "000001") stderr-files)
+        driver-logs (first (filter #(str/includes? % "000001") stderr-files))
         _ (try (io/delete-file "/tmp/stderr")
                (catch IOException _ "file probably doesnt exist"))
-        get (aws/invoke s3-client {:op :GetObject :request {:Bucket bucket
-                                                            :Key    (first driver-logs)}})
-        _ (io/copy (:Body get) (io/file "/tmp/stderr"))
-        logs (log-filter (str/split (slurp "/tmp/stderr") #"\n"))]
-    (doseq [line logs] (println line))))
+        _ (info "downloading logs")
+        _ (sh "aws" "s3"  "cp" (str "s3://" bucket "/" driver-logs) "/tmp/stderr")
+        _ (info "logs downloaded")]
+    (with-open [rdr (clojure.java.io/reader "/tmp/stderr")]
+      (doseq [line (log-filter (line-seq rdr))] (println line)))))
 
 (defn get-cluster-status [cluster-id conf]
   (let [emr-client (client-builder conf "emr")
