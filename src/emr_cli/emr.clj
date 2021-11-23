@@ -62,19 +62,17 @@
 
 (defn flat-conj [& args] (filter some? (flatten (conj [] args))))
 
-(defn merge-configs [& args]
-  (vec (r/fold
-         (r/monoid (fn [ret v] (let [{class :Classification props :Properties} v
-                                     existing-class (first (filter #(= class (:Classification %)) ret))]
-                                 (if (some? existing-class)
-                                   (conj (filter #(not= class (:Classification %)) ret)
-                                         {:Classification class
-                                          :Properties     (r/fold (r/monoid (fn [ret m] (merge ret m))
-                                                                            (constantly {}))
-                                                                  [(:Properties existing-class) props])})
-                                   (conj ret v))))
-                   (constantly []))
-         args)))
+(defn merge-configs [config-arr]
+  (r/fold
+    (r/monoid (fn [ret v] (let [{class :Classification props :Properties} v
+                                existing-class (first (filter #(= class (:Classification %)) ret))]
+                            (if (some? existing-class)
+                              (conj (filter #(not= class (:Classification %)) ret)
+                                    {:Classification class
+                                     :Properties     (reduce merge {} [(:Properties existing-class) props])})
+                              (conj ret v))))
+              (constantly []))
+    config-arr))
 
 (defn create-request [config]
   "tags of shape {:Key key :Value value}"
@@ -111,29 +109,29 @@
                           (when-let [sec-groups (:additionalSecurityGroups config)]
                             {:AdditionalMasterSecurityGroups (flatten [sec-groups])
                              :AdditionalSlaveSecurityGroups  (flatten [sec-groups])}))
-     :Configurations    (flat-conj
-                          [{:Classification "spark-defaults"
-                            :Properties     {:spark.driver.memory           (:executor-memory params)
-                                             :spark.driver.cores            (:executor-cores params)
-                                             :spark.executor.memory         (:executor-memory params)
-                                             :spark.executor.instances      (:executor-instances params)
-                                             :spark.executor.cores          (:executor-cores params)
-                                             :spark.sql.shuffle.partitions  (str (or (:shufflePartitions config)
-                                                                                     (:shuffle-partitions params)))
-                                             :spark.executor.memoryOverhead (:yarn-memory-overhead params)}}
-                           {:Classification "yarn-site"
-                            :Properties     {:yarn.nodemanager.resource.memory-mb  (:yarn-allocateable-memory-per-node params)
-                                             :yarn.nodemanager.resource.cpu-vcores (:yarn-allocateable-cores-per-node params)}}
-                           {:Classification "capacity-scheduler"
-                            :Properties     {:yarn.scheduler.capacity.resource-calculator "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"}}
-                           (if (:configurations config)
-                             (map (fn [conf] {:Classification (:classification conf)
-                                              :Properties     (reduce
-                                                                #(assoc %1 (keyword (:key %2)) (:value %2))
-                                                                {}
-                                                                (:properties conf))})
-                                  (:configurations config)))
-                           ])
+     :Configurations    (merge-configs
+                          (flat-conj
+                            [{:Classification "spark-defaults"
+                              :Properties     {:spark.driver.memory           (:executor-memory params)
+                                               :spark.driver.cores            (:executor-cores params)
+                                               :spark.executor.memory         (:executor-memory params)
+                                               :spark.executor.instances      (:executor-instances params)
+                                               :spark.executor.cores          (:executor-cores params)
+                                               :spark.sql.shuffle.partitions  (str (or (:shufflePartitions config)
+                                                                                       (:shuffle-partitions params)))
+                                               :spark.executor.memoryOverhead (:yarn-memory-overhead params)}}
+                             {:Classification "yarn-site"
+                              :Properties     {:yarn.nodemanager.resource.memory-mb  (:yarn-allocateable-memory-per-node params)
+                                               :yarn.nodemanager.resource.cpu-vcores (:yarn-allocateable-cores-per-node params)}}
+                             {:Classification "capacity-scheduler"
+                              :Properties     {:yarn.scheduler.capacity.resource-calculator "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"}}
+                             (if (:configurations config)
+                               (map (fn [conf] {:Classification (:classification conf)
+                                                :Properties     (reduce
+                                                                  #(assoc %1 (keyword (:key %2)) (:value %2))
+                                                                  {}
+                                                                  (:properties conf))})
+                                    (:configurations config)))]))
      :Steps             (flat-conj
                           {:Name            "setup hadoop debugging"
                            :ActionOnFailure "TERMINATE_CLUSTER"
