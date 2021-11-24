@@ -229,7 +229,8 @@
                 (not (str/includes? % "Snapshot"))
                 (not (str/includes? % "AsyncEventQueue"))
                 (not (str/includes? % "VacuumCommand"))
-                (not (str/includes? % "OptimisticTransaction")))
+                (not (str/includes? % "OptimisticTransaction"))
+                (not (str/includes? % "Executor")))
           lines))
 
 (defn get-emr-logs [cluster-id conf]
@@ -237,20 +238,25 @@
         uri-components (str/split (str/join "/" [(str/join (drop 5 (:logUri conf))) cluster-id]) #"/")
         bucket (first uri-components)
         prefix (str/join "/" (filter #(not (= "" %)) (rest uri-components)))
-        container-logs (aws/invoke s3-client {:op :ListObjectsV2 :request {:Bucket bucket :Prefix prefix}})
-        stderr-files (filter #(str/ends-with? % "stderr.gz") (map :Key (:Contents container-logs)))
-        driver-logs (first (filter #(str/includes? % "000001") stderr-files))
-        _ (try (io/delete-file "/tmp/stderr")
-               (catch IOException _ "file probably doesnt exist"))
-        _ (info "downloading logs")
-        _ (shell/sh "aws" "s3"  "cp" (str "s3://" bucket "/" driver-logs) "/tmp/stderr")
-        _ (info "logs downloaded")]
-    (with-open [rdr (clojure.java.io/reader "/tmp/stderr")]
-      (doseq [line (log-filter (line-seq rdr))] (println line)))))
+        driver-logs (loop [s3-resp (aws/invoke s3-client {:op :ListObjectsV2 :request {:Bucket bucket :Prefix prefix}})]
+                      (let [driver-logs (first (filter #(and (str/ends-with? % "stderr.gz") (str/includes? % "000001"))
+                                                       (map :Key (:Contents s3-resp))))]
+                        (cond
+                          (string? driver-logs) driver-logs
+                          (:IsTruncated s3-resp) (recur (aws/invoke s3-client {:op :ListObjectsV2
+                                                                               :request {:Bucket bucket
+                                                                                         :Prefix prefix
+                                                                                         :ContinuationToken (:ContinuationToken s3-resp)}}))
+                          :else (throw (Exception. "driver logs dont exist, you dun goofed")))))
+        _ (info (str "found log file: " driver-logs))
+        get (aws/invoke s3-client {:op :GetObject :request {:Bucket bucket
+
+                                                            :Key    driver-logs}})]
+    (doseq [line (log-filter (line-seq (io/reader (:Body get))))] (println line))))
 
 (defn get-cluster-status [cluster-id conf]
   (let [emr-client (client-builder conf "emr")
-        status(:Status (:Cluster (aws/invoke emr-client {:op :DescribeCluster :request {:ClusterId cluster-id}})))
+        status (:Status (:Cluster (aws/invoke emr-client {:op :DescribeCluster :request {:ClusterId cluster-id}})))
         state (:State status)
         {start :CreationDateTime end :EndDateTime} (:Timeline status)]
     (do
