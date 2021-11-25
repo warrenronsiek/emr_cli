@@ -1,5 +1,6 @@
 (ns emr-cli.emr
   (:require [cognitect.aws.client.api :as aws]
+            [emr-cli.utils.conf-parse :refer [ec2-info]]
             [emr-cli.utils :as utils]
             [clojure.core.async :refer [thread]]
     ; [clj-ssh.ssh :refer [ssh-agent session forward-remote-port]]
@@ -31,7 +32,7 @@
   ; I am doing a variant of what is specified in some spark books/talks, but you can find something similar in:
   ; https://aws.amazon.com/blogs/big-data/best-practices-for-successfully-managing-memory-for-apache-spark-applications-on-amazon-emr/
   (let [memory-overhead-multiplier 0.9                      ; multiplier is to give the os/system memory
-        instance ((keyword instance-type) utils/ec2-info)
+        instance ((keyword instance-type) ec2-info)
         allocateable-cores-per-node (- (:cores instance) 1) ; -1 for the yarn nodemanager that has to run on each node
         total-nodes worker-count
         total-cores (* allocateable-cores-per-node total-nodes)

@@ -1,7 +1,8 @@
 (ns emr_cli.core
   (:require [cli-matic.core :refer [run-cmd]]
             [emr-cli.emr :refer [create-cluster terminate-clusters]]
-            [emr-cli.utils :refer [parse-conf get-emr-logs get-cluster-status]]
+            [emr-cli.utils.conf-parse :refer [parse-conf]]
+            [emr-cli.utils :refer [get-emr-logs get-cluster-status]]
             [emr-cli.state :refer [print-clusters]]
             [taoensso.timbre :as timbre])
   (:gen-class))
