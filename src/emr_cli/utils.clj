@@ -4,10 +4,12 @@
             [clojure.spec.alpha :as s]
             [cognitect.aws.credentials :as credentials]
             [clojure.string :as str]
-            [taoensso.timbre :refer [info spy]]
+            [taoensso.timbre :refer [info spy error]]
             [clojure.java.io :as io]
-            [clojure.java.shell :as shell])
+            [clojure.java.shell :as shell]
+            [clojure.test :as t])
   (:import (java.io IOException BufferedInputStream, BufferedReader, File)
+           (java.lang IllegalArgumentException)
            (java.time Duration ZoneId ZonedDateTime Instant)
            (java.util.zip GZIPInputStream)))
 
@@ -113,17 +115,20 @@
                       (let [driver-logs (first (filter #(and (str/ends-with? % "stderr.gz") (str/includes? % "000001"))
                                                        (map :Key (:Contents s3-resp))))]
                         (cond
-                          (string? driver-logs) driver-logs
-                          (:IsTruncated s3-resp) (recur (aws/invoke s3-client {:op :ListObjectsV2
-                                                                               :request {:Bucket bucket
-                                                                                         :Prefix prefix
-                                                                                         :ContinuationToken (:ContinuationToken s3-resp)}}))
-                          :else (throw (Exception. "driver logs dont exist, you dun goofed")))))
-        _ (info (str "found log file: " driver-logs))
+                          (string? driver-logs) (do
+                                                  (info (str "found log file: " driver-logs))
+                                                  driver-logs)
+                          (:IsTruncated s3-resp) (do
+                                                   (info (str "lots of logs, iterating through them..."))
+                                                   (recur (aws/invoke s3-client {:op      :ListObjectsV2
+                                                                                 :request {:Bucket            bucket
+                                                                                           :Prefix            prefix
+                                                                                           :ContinuationToken (:ContinuationToken s3-resp)}})))
+                          :else (throw (Exception. "driver logs dont exist, this is probably due to a spark driver crash.")))))
         get (aws/invoke s3-client {:op :GetObject :request {:Bucket bucket
-
                                                             :Key    driver-logs}})]
-    (doseq [line (log-filter (line-seq (io/reader (:Body get))))] (println line))))
+    (try (doseq [line (log-filter (line-seq (io/reader (:Body get))))] (println line))
+         (catch IllegalArgumentException e (error "failed to s3 get the file. Its probably large and your internet is slow.")))))
 
 (defn get-cluster-status [cluster-id conf]
   (let [emr-client (client-builder conf "emr")
