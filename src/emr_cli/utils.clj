@@ -102,6 +102,7 @@
                 (not (str/includes? % "Snapshot"))
                 (not (str/includes? % "AsyncEventQueue"))
                 (not (str/includes? % "VacuumCommand"))
+                (not (str/includes? % "TransportClientFactory"))
                 (not (str/includes? % "OptimisticTransaction"))
                 (not (str/includes? % "Executor")))
           lines))
@@ -112,7 +113,7 @@
         bucket (first uri-components)
         prefix (str/join "/" (filter #(not (= "" %)) (rest uri-components)))
         driver-logs (loop [s3-resp (aws/invoke s3-client {:op :ListObjectsV2 :request {:Bucket bucket :Prefix prefix}})]
-                      (let [driver-logs (first (filter #(and (str/ends-with? % "stderr.gz") (str/includes? % "000001"))
+                      (let [driver-logs (first (filter #(some? (re-matches #".*application.*0002.*stderr\.gz$" %))
                                                        (map :Key (:Contents s3-resp))))]
                         (cond
                           (string? driver-logs) (do
@@ -124,7 +125,7 @@
                                                                                  :request {:Bucket            bucket
                                                                                            :Prefix            prefix
                                                                                            :ContinuationToken (:ContinuationToken s3-resp)}})))
-                          :else (throw (Exception. "driver logs dont exist, this is probably due to a spark driver crash.")))))
+                          :else (throw (Exception. "driver logs dont exist, this is either due to a spark driver crash or an incorrect logUri configuration param.")))))
         get (aws/invoke s3-client {:op :GetObject :request {:Bucket bucket
                                                             :Key    driver-logs}})]
     (try (doseq [line (log-filter (line-seq (io/reader (:Body get))))] (println line))
