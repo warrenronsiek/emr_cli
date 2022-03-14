@@ -107,6 +107,9 @@
                 (not (str/includes? % "Executor")))
           lines))
 
+(defn filter-local-logs [local-file]
+  (doseq [line (log-filter (line-seq (io/reader local-file)))] (println line)))
+
 (defn get-emr-logs [cluster-id conf]
   (let [s3-client (client-builder conf "s3")
         uri-components (str/split (str/join "/" [(str/join (drop 5 (:logUri conf))) cluster-id]) #"/")
