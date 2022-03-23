@@ -104,6 +104,8 @@
                 (not (str/includes? % "VacuumCommand"))
                 (not (str/includes? % "TransportClientFactory"))
                 (not (str/includes? % "OptimisticTransaction"))
+                (not (str/includes? % "S3NativeFileSystem"))
+                (not (str/includes? % "FileScanRDD"))
                 (not (str/includes? % "Executor")))
           lines))
 

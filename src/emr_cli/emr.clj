@@ -77,7 +77,11 @@
 
 (defn create-request [config]
   "tags of shape {:Key key :Value value}"
-  (let [params (calculate-emr-params (:instanceType config) (:instanceCount config))]
+  (let [params (calculate-emr-params (:instanceType config) (:instanceCount config))
+        volume-conf (:volumeConfig config)
+        ebs-config {:EbsOptimized true
+                    :EbsBlockDeviceConfigs {:VolumeSpecification {:SizeInGB 320 :VolumeType "gp2"}
+                                            :VolumesPerInstance 2}}]
     {:Name              (:clusterName config)
      :LogUri            (:logUri config)
      :ReleaseLabel      (str "emr-" (or (:emrVersion config) "6.3.0"))
@@ -95,18 +99,21 @@
                                                           :InstanceRole  "MASTER"
                                                           :Market        "ON_DEMAND"
                                                           :InstanceType  (:instanceType config)
-                                                          :InstanceCount 1}
+                                                          :InstanceCount 1
+                                                          :EbsConfiguration ebs-config}
                                                          (if (:bidPct config) {:Name          "worker"
                                                                                :InstanceRole  "CORE"
                                                                                :Market        "SPOT"
                                                                                :InstanceType  (:instanceType config)
                                                                                :InstanceCount (:instanceCount config)
-                                                                               :BidPrice      (calculate-bid-price config)}
+                                                                               :BidPrice      (calculate-bid-price config)
+                                                                               :EbsConfiguration ebs-config}
                                                                               {:Name          "worker"
                                                                                :InstanceRole  "CORE"
                                                                                :InstanceType  (:instanceType config)
                                                                                :InstanceCount (:instanceCount config)
-                                                                               :Market        "ON_DEMAND"})]}
+                                                                               :Market        "ON_DEMAND"
+                                                                               :EbsConfiguration ebs-config})]}
                           (when-let [sec-groups (:additionalSecurityGroups config)]
                             {:AdditionalMasterSecurityGroups (flatten [sec-groups])
                              :AdditionalSlaveSecurityGroups  (flatten [sec-groups])}))

@@ -109,10 +109,14 @@
              [::classification [string?]]
              [::key [string?]]
              [::value [string?]]
-             [::jarClass [string?]]])
+             [::jarClass [string?]]
+             [::volumeCount [integer?]]
+             [::volumeGB [integer?]]
+             [::volumeType [string?]]])
   (s/def ::instanceType (set (map name (keys ec2-info))))
   (s/def ::properties (s/coll-of (s/keys :req-un [::key ::value])))
   (s/def ::configurations (s/coll-of (s/keys :req-un [::classification ::properties])))
+  (s/def ::volumeConfiguration (s/coll-of (s/keys :req-un [::volumeCount ::volumeGB :volumeType])))
   (s/def ::jarArg (s/or :s string? :i int? :d double?))
   (s/def ::jarArgs (s/coll-of ::jarArg))
   (s/def ::tag (s/keys :Name :Value))
@@ -120,7 +124,8 @@
   (s/def ::config (s/keys :req-un [::clusterName ::logUri ::instanceType ::pemKey ::instanceCount
                                    ::instanceProfile ::serviceRole]
                           :opt-un [::tags ::callerRole ::jar ::jarClass ::jarArgs ::bidPct ::emrVersion
-                                   ::configurations ::shufflePartitions ::additionalSecurityGroups]))
+                                   ::configurations ::shufflePartitions ::additionalSecurityGroups
+                                   ::volumeConfiguration]))
   (if (not (s/valid? ::config conf)) (s/explain ::config conf))
   (if (:jarClass conf) (assert (:jar conf)))
   (if (:jarArgs conf) (assert (:jar conf)))
