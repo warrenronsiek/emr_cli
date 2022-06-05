@@ -1,5 +1,6 @@
-# emr_cli
-A command line utility for spinning up a EMR clusters from config files.
+# DEPRECATED. 
+Please refer to https://github.com/warrenronsiek/emr-cli instead.
+
 
 ## Requirements 
 * Java 8
