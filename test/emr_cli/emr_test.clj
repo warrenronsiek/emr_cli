@@ -4,6 +4,44 @@
             [emr-cli.utils :refer [parse-conf]]
             [clojure.java.io :as io]))
 
+(deftest flat-conj-test
+  (testing "flat-conj utility function"
+    (let [testcol1 [{:a 1} [{:b 2}]]]
+      (is (= (flat-conj testcol1) [{:a 1} {:b 2}])))))
+
+(deftest merge-config-test
+  (testing "merging configs"
+    (let [testcol1 [{:Classification "a"
+                     :Properties     {:k 1 :k2 2}}
+                    {:Classification "a"
+                     :Properties     {:k 2}}]
+          testcol2 [{:Classification "foo"
+                     :Properties     {:k "same"}}
+                    {:Classification "foo"
+                     :Properties     {:k "same"}}]
+          testcol3 [{:Classification "foo"
+                     :Properties     {:k "same"}}
+                    {:Classification "foo"
+                     :Properties     {:k2 "diff"}}]
+          testcol4 [{:Classification "bar"
+                     :Properties     {:k "same"}}
+                    {:Classification "foo"
+                     :Properties     {:k "diff"}}]]
+      (is (= [{:Classification "a"
+               :Properties     {:k 2 :k2 2}}]
+             (merge-configs testcol1)))
+      (is (= [{:Classification "foo"
+               :Properties     {:k "same"}}]
+             (merge-configs testcol2)))
+      (is (= [{:Classification "foo"
+               :Properties     {:k "same" :k2 "diff"}}]
+             (merge-configs testcol3) ))
+      (is (= [{:Classification "bar"
+               :Properties     {:k "same"}}
+              {:Classification "foo"
+               :Properties     {:k "diff"}}]
+             (merge-configs testcol4))))))
+
 (deftest emr-params-test
   (testing "m4.4xlarge params"
     (let [params (calculate-emr-params "m4.4xlarge" 10)]

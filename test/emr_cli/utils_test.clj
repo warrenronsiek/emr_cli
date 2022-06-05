@@ -1,7 +1,8 @@
 (ns emr-cli.utils-test
   (:require [clojure.test :refer :all]
             [clojure.java.io :as io]
-            [emr-cli.utils :refer [parse-conf client-builder]]))
+            [emr-cli.utils.conf-parse :refer [parse-conf]]
+            [emr-cli.utils :refer [client-builder get-emr-logs]]))
 
 
 (deftest good-conf-consumption
@@ -30,3 +31,8 @@
   (testing "client-builder builds clients"
     (let [conf (parse-conf (slurp (io/resource "example_conf.yml")))]
       (is (instance? cognitect.aws.client.Client (client-builder conf "s3"))))))
+
+;(deftest gets-logs
+;  (testing "gets driver logs"
+;    (let [logs (get-emr-logs "j-1T07SM8GGANJM" (parse-conf (slurp "lift.yml")))]
+;      (is (nil? logs)))))

@@ -4,51 +4,14 @@
             [clojure.spec.alpha :as s]
             [cognitect.aws.credentials :as credentials]
             [clojure.string :as str]
-            [taoensso.timbre :refer [info]]
-            [clojure.java.io :as io])
-  (:import (java.io IOException)
-           (java.time Duration ZoneId ZonedDateTime Instant)))
-
-(defmacro ^:private and-spec [defs]
-  `(do ~@(map (fn [[name rest]] `(s/def ~name (s/and ~@rest))) defs)))
-
-(defn validate-conf
-  [conf]
-  (and-spec [[::clusterName [string?]]
-             [::logUri [string?]]
-             [::subnet [string?]]
-             [::instanceType [string?]]
-             [::pemKey [string?]]
-             [::instanceCount [integer?]]
-             [::bidPct [integer? #(and (< % 100) (< 0 %))]]
-             [::instanceProfile [string?]]
-             [::serviceRole [string?]]
-             [::callerRole [string?]]
-             [::jar [string?]]
-             [::additionalSecurityGroups [string?]]
-             [::shufflePartitions [integer?]]
-             [::emrVersion [string?]]
-             [::classification [string?]]
-             [::key [string?]]
-             [::value [string?]]
-             [::jarClass [string?]]])
-  (s/def ::properties (s/coll-of (s/keys :req-un [::key ::value])))
-  (s/def ::configurations (s/coll-of (s/keys :req-un [::classification ::properties])))
-  (s/def ::jarArg (s/or :s string? :i int? :d double?))
-  (s/def ::jarArgs (s/coll-of ::jarArg))
-  (s/def ::tag (s/keys :Name :Value))
-  (s/def ::tags (s/coll-of ::tag))
-  (s/def ::config (s/keys :req-un [::clusterName ::logUri ::instanceType ::pemKey ::instanceCount
-                                   ::instanceProfile ::serviceRole]
-                          :opt-un [::tags ::callerRole ::jar ::jarClass ::jarArgs ::bidPct ::emrVersion
-                                   ::configurations ::shufflePartitions ::additionalSecurityGroups]))
-  (if (not (s/valid? ::config conf)) (s/explain ::config conf))
-  (if (:jarClass conf) (assert (:jar conf)))
-  (if (:jarArgs conf) (assert (:jar conf)))
-  (s/conform ::config conf))
-
-
-(defn parse-conf [conf] (validate-conf (yaml/parse-string conf)))
+            [taoensso.timbre :refer [info spy error]]
+            [clojure.java.io :as io]
+            [clojure.java.shell :as shell]
+            [clojure.test :as t])
+  (:import (java.io IOException BufferedInputStream, BufferedReader, File)
+           (java.lang IllegalArgumentException)
+           (java.time Duration ZoneId ZonedDateTime Instant)
+           (java.util.zip GZIPInputStream)))
 
 (defn ^:private session-credentials-provider
   "need to have this weird glue thing as a consequence of the way providers are implemented"
@@ -87,91 +50,6 @@
     (if (some? (-> subnet :Response :Errors :Error :Code))
       (throw (Exception. (str (-> subnet :Response :Errors :Error :Message))))
       (str/join (drop-last 1 sub-region)))))
-
-(def ec2-info
-  {:m4.4xlarge    {:memory 64.0 :cores 16}
-   :m4.xlarge     {:memory 16.0 :cores 4}
-   :m4.2xlarge    {:memory 32.0 :cores 8}
-   :m4.10xlarge   {:memory 160.0 :cores 40}
-   :m4.16xlarge   {:memory 256.0 :cores 64}
-   :m5.4xlarge    {:memory 64.0 :cores 16}
-   :m5.xlarge     {:memory 16.0 :cores 4}
-   :m5.8xlarge    {:memory 128.0 :cores 32}
-   :m5.2xlarge    {:memory 32.0 :cores 8}
-   :m5.24xlarge   {:memory 384.0 :cores 96}
-   :m5.16xlarge   {:memory 256.0 :cores 64}
-   :m5.12xlarge   {:memory 192.0 :cores 48}
-   :m5a.4xlarge   {:memory 64.0 :cores 16}
-   :m5a.xlarge    {:memory 16.0 :cores 4}
-   :m5a.2xlarge   {:memory 32.0 :cores 8}
-   :m5a.24xlarge  {:memory 384.0 :cores 96}
-   :m5a.12xlarge  {:memory 192.0 :cores 48}
-   :m5d.4xlarge   {:memory 64.0 :cores 16}
-   :m5d.xlarge    {:memory 16.0 :cores 4}
-   :m5d.2xlarge   {:memory 32.0 :cores 8}
-   :m5d.24xlarge  {:memory 384.0 :cores 96}
-   :m5d.12xlarge  {:memory 192.0 :cores 48}
-   :c4.4xlarge    {:memory 30.0 :cores 16}
-   :c4.8xlarge    {:memory 60.0 :cores 36}
-   :c4.2xlarge    {:memory 15.0 :cores 8}
-   :c5.4xlarge    {:memory 32.0 :cores 16}
-   :c5.2xlarge    {:memory 16.0 :cores 8}
-   :c5.9xlarge    {:memory 72.0 :cores 36}
-   :c5.18xlarge   {:memory 144.0 :cores 72}
-   :c5d.4xlarge   {:memory 32.0 :cores 16}
-   :c5d.2xlarge   {:memory 16.0 :cores 8}
-   :c5d.9xlarge   {:memory 72.0 :cores 36}
-   :c5d.18xlarge  {:memory 144.0 :cores 72}
-   :c5n.4xlarge   {:memory 42.0 :cores 16}
-   :c5n.2xlarge   {:memory 21.0 :cores 8}
-   :c5n.9xlarge   {:memory 96.0 :cores 36}
-   :c5n.18xlarge  {:memory 192.0 :cores 72}
-   :z1d.xlarge    {:memory 32.0 :cores 4}
-   :z1d.2xlarge   {:memory 64.0 :cores 8}
-   :z1d.6xlarge   {:memory 192.0 :cores 24}
-   :z1d.3xlarge   {:memory 96.0 :cores 12}
-   :z1d.12xlarge  {:memory 384.0 :cores 48}
-   :r3.4xlarge    {:memory 122.0 :cores 16}
-   :r3.xlarge     {:memory 30.5 :cores 4}
-   :r3.8xlarge    {:memory 244.0 :cores 32}
-   :r3.2xlarge    {:memory 61.0 :cores 8}
-   :r4.4xlarge    {:memory 122.0 :cores 16}
-   :r4.xlarge     {:memory 30.5 :cores 4}
-   :r4.8xlarge    {:memory 244.0 :cores 32}
-   :r4.2xlarge    {:memory 61.0 :cores 8}
-   :r4.16xlarge   {:memory 488.0 :cores 64}
-   :r5.4xlarge    {:memory 128.0 :cores 16}
-   :r5.xlarge     {:memory 32.0 :cores 4}
-   :r5.2xlarge    {:memory 64.0 :cores 8}
-   :r5.12xlarge   {:memory 384.0 :cores 48}
-   :r5a.4xlarge   {:memory 128.0 :cores 16}
-   :r5a.xlarge    {:memory 32.0 :cores 4}
-   :r5a.2xlarge   {:memory 64.0 :cores 8}
-   :r5a.24xlarge  {:memory 768.0 :cores 96}
-   :r5a.12xlarge  {:memory 384.0 :cores 48}
-   :r5d.4xlarge   {:memory 128.0 :cores 16}
-   :r5d.xlarge    {:memory 32.0 :cores 4}
-   :r5d.2xlarge   {:memory 64.0 :cores 8}
-   :r5d.24xlarge  {:memory 768.0 :cores 96}
-   :r5d.12xlarge  {:memory 384.0 :cores 48}
-   :h1.4xlarge    {:memory 64.0 :cores 16}
-   :h1.8xlarge    {:memory 128.0 :cores 32}
-   :h1.16xlarge   {:memory 32.0 :cores 8}
-   :i3.4xlarge    {:memory 122.0 :cores 16}
-   :i3.xlarge     {:memory 30.5 :cores 4}
-   :i3.8xlarge    {:memory 244.0 :cores 32}
-   :i3.2xlarge    {:memory 61.0 :cores 8}
-   :i3.16xlarge   {:memory 488.0 :cores 64}
-   :i3en.xlarge   {:memory 32.0 :cores 4}
-   :i3en.2xlarge  {:memory 64.0 :cores 8}
-   :i3en.6xlarge  {:memory 192.0 :cores 24}
-   :i3en.3xlarge  {:memory 96.0 :cores 12}
-   :i3en.24xlarge {:memory 768.0 :cores 96}
-   :i3en.12xlarge {:memory 384.0 :cores 48}
-   :d2.4xlarge    {:memory 122.0 :cores 16}
-   :d2.xlarge     {:memory 30.5 :cores 4}
-   :d2.8xlarge    {:memory 244.0 :cores 36}
-   :d2.2xlarge    {:memory 61.0 :cores 8}})
 
 (defn log-filter [lines]
   (filter #(and (not (str/includes? % "BlockManagerInfo"))
@@ -218,29 +96,49 @@
                 (not (str/includes? % "TorrentBroadcast"))
                 (not (str/includes? % "DelegatingLogStore"))
                 (not (str/includes? % "DefaultCachedBatchSerializer"))
+                (not (str/includes? % "YarnCoarseGrainedExecutorBackend"))
+                (not (str/includes? % "ShuffleBlockFetcherIterator"))
                 (not (str/includes? % "DeltaLog"))
-                (not (str/includes? % "Snapshot")))
+                (not (str/includes? % "Snapshot"))
+                (not (str/includes? % "AsyncEventQueue"))
+                (not (str/includes? % "VacuumCommand"))
+                (not (str/includes? % "TransportClientFactory"))
+                (not (str/includes? % "OptimisticTransaction"))
+                (not (str/includes? % "S3NativeFileSystem"))
+                (not (str/includes? % "FileScanRDD"))
+                (not (str/includes? % "Executor")))
           lines))
+
+(defn filter-local-logs [local-file]
+  (doseq [line (log-filter (line-seq (io/reader local-file)))] (println line)))
 
 (defn get-emr-logs [cluster-id conf]
   (let [s3-client (client-builder conf "s3")
         uri-components (str/split (str/join "/" [(str/join (drop 5 (:logUri conf))) cluster-id]) #"/")
         bucket (first uri-components)
         prefix (str/join "/" (filter #(not (= "" %)) (rest uri-components)))
-        container-logs (aws/invoke s3-client {:op :ListObjectsV2 :request {:Bucket bucket :Prefix prefix}})
-        stderr-files (filter #(str/ends-with? % "stderr.gz") (map :Key (:Contents container-logs)))
-        driver-logs (filter #(str/includes? % "000001") stderr-files)
-        _ (try (io/delete-file "/tmp/stderr")
-               (catch IOException _ "file probably doesnt exist"))
+        driver-logs (loop [s3-resp (aws/invoke s3-client {:op :ListObjectsV2 :request {:Bucket bucket :Prefix prefix}})]
+                      (let [driver-logs (first (filter #(some? (re-matches #".*application.*0002.*stderr\.gz$" %))
+                                                       (map :Key (:Contents s3-resp))))]
+                        (cond
+                          (string? driver-logs) (do
+                                                  (info (str "found log file: " driver-logs))
+                                                  driver-logs)
+                          (:IsTruncated s3-resp) (do
+                                                   (info (str "lots of logs, iterating through them..."))
+                                                   (recur (aws/invoke s3-client {:op      :ListObjectsV2
+                                                                                 :request {:Bucket            bucket
+                                                                                           :Prefix            prefix
+                                                                                           :ContinuationToken (:ContinuationToken s3-resp)}})))
+                          :else (throw (Exception. "driver logs dont exist, this is either due to a spark driver crash or an incorrect logUri configuration param.")))))
         get (aws/invoke s3-client {:op :GetObject :request {:Bucket bucket
-                                                            :Key    (first driver-logs)}})
-        _ (io/copy (:Body get) (io/file "/tmp/stderr"))
-        logs (log-filter (str/split (slurp "/tmp/stderr") #"\n"))]
-    (doseq [line logs] (println line))))
+                                                            :Key    driver-logs}})]
+    (try (doseq [line (log-filter (line-seq (io/reader (:Body get))))] (println line))
+         (catch IllegalArgumentException e (error "failed to s3 get the file. Its probably large and your internet is slow.")))))
 
 (defn get-cluster-status [cluster-id conf]
   (let [emr-client (client-builder conf "emr")
-        status(:Status (:Cluster (aws/invoke emr-client {:op :DescribeCluster :request {:ClusterId cluster-id}})))
+        status (:Status (:Cluster (aws/invoke emr-client {:op :DescribeCluster :request {:ClusterId cluster-id}})))
         state (:State status)
         {start :CreationDateTime end :EndDateTime} (:Timeline status)]
     (do

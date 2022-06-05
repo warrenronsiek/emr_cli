@@ -1,13 +1,15 @@
 (ns emr-cli.emr
   (:require [cognitect.aws.client.api :as aws]
+            [emr-cli.utils.conf-parse :refer [ec2-info]]
             [emr-cli.utils :as utils]
             [clojure.core.async :refer [thread]]
     ; [clj-ssh.ssh :refer [ssh-agent session forward-remote-port]]
             [emr-cli.state :refer [add-cluster remove-cluster get-cluster-ids]]
-            [taoensso.timbre :as timbre :refer [info debug]]
+            [taoensso.timbre :as timbre :refer [info debug spy]]
             [clojure.core :refer [<= >= < >]]
             [clojure.java.io :as io]
             [clj-yaml.core :as yaml]
+            [clojure.core.reducers :as r]
             [clojure.string :as str]))
 
 (defn calculate-bid-price [config]
@@ -30,7 +32,7 @@
   ; I am doing a variant of what is specified in some spark books/talks, but you can find something similar in:
   ; https://aws.amazon.com/blogs/big-data/best-practices-for-successfully-managing-memory-for-apache-spark-applications-on-amazon-emr/
   (let [memory-overhead-multiplier 0.9                      ; multiplier is to give the os/system memory
-        instance ((keyword instance-type) utils/ec2-info)
+        instance ((keyword instance-type) ec2-info)
         allocateable-cores-per-node (- (:cores instance) 1) ; -1 for the yarn nodemanager that has to run on each node
         total-nodes worker-count
         total-cores (* allocateable-cores-per-node total-nodes)
@@ -59,11 +61,27 @@
      :yarn-allocateable-memory-per-node (str (* allocateable-memory-per-node 1024))
      :yarn-allocateable-cores-per-node  (str allocateable-cores-per-node)}))
 
-(defn ^:private flat-conj [& args] (filter some? (flatten (conj [] args))))
+(defn flat-conj [& args] (filter some? (flatten (conj [] args))))
+
+(defn merge-configs [config-arr]
+  (r/fold
+    (r/monoid (fn [ret v] (let [{class :Classification props :Properties} v
+                                existing-class (first (filter #(= class (:Classification %)) ret))]
+                            (if (some? existing-class)
+                              (conj (filter #(not= class (:Classification %)) ret)
+                                    {:Classification class
+                                     :Properties     (reduce merge {} [(:Properties existing-class) props])})
+                              (conj ret v))))
+              (constantly []))
+    config-arr))
 
 (defn create-request [config]
   "tags of shape {:Key key :Value value}"
-  (let [params (calculate-emr-params (:instanceType config) (:instanceCount config))]
+  (let [params (calculate-emr-params (:instanceType config) (:instanceCount config))
+        volume-conf (:volumeConfig config)
+        ebs-config {:EbsOptimized true
+                    :EbsBlockDeviceConfigs {:VolumeSpecification {:SizeInGB 320 :VolumeType "gp2"}
+                                            :VolumesPerInstance 2}}]
     {:Name              (:clusterName config)
      :LogUri            (:logUri config)
      :ReleaseLabel      (str "emr-" (or (:emrVersion config) "6.3.0"))
@@ -81,44 +99,47 @@
                                                           :InstanceRole  "MASTER"
                                                           :Market        "ON_DEMAND"
                                                           :InstanceType  (:instanceType config)
-                                                          :InstanceCount 1}
+                                                          :InstanceCount 1
+                                                          :EbsConfiguration ebs-config}
                                                          (if (:bidPct config) {:Name          "worker"
                                                                                :InstanceRole  "CORE"
                                                                                :Market        "SPOT"
                                                                                :InstanceType  (:instanceType config)
                                                                                :InstanceCount (:instanceCount config)
-                                                                               :BidPrice      (calculate-bid-price config)}
+                                                                               :BidPrice      (calculate-bid-price config)
+                                                                               :EbsConfiguration ebs-config}
                                                                               {:Name          "worker"
                                                                                :InstanceRole  "CORE"
                                                                                :InstanceType  (:instanceType config)
                                                                                :InstanceCount (:instanceCount config)
-                                                                               :Market        "ON_DEMAND"})]}
+                                                                               :Market        "ON_DEMAND"
+                                                                               :EbsConfiguration ebs-config})]}
                           (when-let [sec-groups (:additionalSecurityGroups config)]
                             {:AdditionalMasterSecurityGroups (flatten [sec-groups])
                              :AdditionalSlaveSecurityGroups  (flatten [sec-groups])}))
-     :Configurations    (flat-conj
-                          [{:Classification "spark-defaults"
-                            :Properties     {:spark.driver.memory           (:executor-memory params)
-                                             :spark.driver.cores            (:executor-cores params)
-                                             :spark.executor.memory         (:executor-memory params)
-                                             :spark.executor.instances      (:executor-instances params)
-                                             :spark.executor.cores          (:executor-cores params)
-                                             :spark.sql.shuffle.partitions  (str (or (:shufflePartitions config)
-                                                                                     (:shuffle-partitions params)))
-                                             :spark.executor.memoryOverhead (:yarn-memory-overhead params)}}
-                           {:Classification "yarn-site"
-                            :Properties     {:yarn.nodemanager.resource.memory-mb  (:yarn-allocateable-memory-per-node params)
-                                             :yarn.nodemanager.resource.cpu-vcores (:yarn-allocateable-cores-per-node params)}}
-                           {:Classification "capacity-scheduler"
-                            :Properties     {:yarn.scheduler.capacity.resource-calculator "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"}}
-                           (if (:configurations config)
-                             (map (fn [conf] {:Classification (:classification conf)
-                                              :Properties     (reduce
-                                                                #(assoc %1 (keyword (:key %2)) (:value %2))
-                                                                {}
-                                                                (:properties conf))})
-                                  (:configurations config)))
-                           ])
+     :Configurations    (merge-configs
+                          (flat-conj
+                            [{:Classification "spark-defaults"
+                              :Properties     {:spark.driver.memory           (:executor-memory params)
+                                               :spark.driver.cores            (:executor-cores params)
+                                               :spark.executor.memory         (:executor-memory params)
+                                               :spark.executor.instances      (:executor-instances params)
+                                               :spark.executor.cores          (:executor-cores params)
+                                               :spark.sql.shuffle.partitions  (str (or (:shufflePartitions config)
+                                                                                       (:shuffle-partitions params)))
+                                               :spark.executor.memoryOverhead (:yarn-memory-overhead params)}}
+                             {:Classification "yarn-site"
+                              :Properties     {:yarn.nodemanager.resource.memory-mb  (:yarn-allocateable-memory-per-node params)
+                                               :yarn.nodemanager.resource.cpu-vcores (:yarn-allocateable-cores-per-node params)}}
+                             {:Classification "capacity-scheduler"
+                              :Properties     {:yarn.scheduler.capacity.resource-calculator "org.apache.hadoop.yarn.util.resource.DominantResourceCalculator"}}
+                             (if (:configurations config)
+                               (map (fn [conf] {:Classification (:classification conf)
+                                                :Properties     (reduce
+                                                                  #(assoc %1 (keyword (:key %2)) (:value %2))
+                                                                  {}
+                                                                  (:properties conf))})
+                                    (:configurations config)))]))
      :Steps             (flat-conj
                           {:Name            "setup hadoop debugging"
                            :ActionOnFailure "TERMINATE_CLUSTER"
